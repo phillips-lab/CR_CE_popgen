@@ -1,0 +1,104 @@
+#!/bin/bash
+#SBATCH -A phillipslab
+#SBATCH --partition=phillips       ### Partition
+#SBATCH --job-name=ReLERNN    ### Job Name
+#SBATCH --time=35:00:00        ### WallTime
+#SBATCH --nodes=1              ### Number of Nodes
+#SBATCH --ntasks=1             ### Number of tasks per array job
+#SBATCH --array=0          ### Array index
+#SBATCH --cpus-per-task=10            ### Number of CPU cores per task
+export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
+
+
+
+source ~/.bashrc
+conda activate relernnenvir
+
+#conda activate relernnenvir
+# see example here /projects/phillipslab/ateterina/scripts/ReLERNN/ReLERNN/examples
+
+module load bedtools
+cd  /projects/phillipslab/ateterina/CE_haw_subset/data/BAMS/EXONS_INTRONS
+
+mkdir -p LD
+cd LD
+
+
+reffai="/projects/phillipslab/ateterina/CE_haw_subset/ref_245/c_elegans.PRJNA13758.WS245.genomic.fa.fai"
+INDEX="5-100_0.5"
+VCFI="/projects/phillipslab/ateterina/CE_haw_subset/data/BAMS/CE_population_filt_snps_${INDEX}_fin.vcf"
+MASK="/projects/phillipslab/ateterina/CE_haw_subset/data/BAMS/CE_mask_these_region${INDEX}.bed"
+
+#make a genome file for relernn
+if [ ! -f CE.genome.relernn.bed ]
+then
+  head -n 6 $reffai |awk '{print $1"\t"0"\t"$2}' - > CE.genome.relernn.bed
+fi
+
+
+zcat ${VCFI/.vcf/.noimp2}.I.vcf.gz |grep  "#" - > CE_phased_combined.vcf
+
+for chr in I II III IV V X;do
+    zcat ${VCFI/.vcf/.noimp2}.${chr}.vcf.gz |grep -v "#" -  >>CE_phased_combined.vcf;
+
+done
+
+
+#run ReLERNN for each chromosome
+
+SIMULATE="ReLERNN_SIMULATE"
+TRAIN="ReLERNN_TRAIN"
+PREDICT="ReLERNN_PREDICT"
+BSCORRECT="ReLERNN_BSCORRECT"
+SEED="42"
+MU="1.15e-9"
+URTR="10"
+DIR="./CE_0.5M_2T_10URTR_output/"
+VCF="./CE_phased_combined.vcf"
+GENOME="./CE.genome.relernn.bed"
+MASK="/projects/phillipslab/ateterina/CE_haw_subset/data/BAMS/CE_mask_these_region${INDEX}.bed"
+
+DEMDIR="/projects/phillipslab/ateterina/CE_haw_subset/data/BAMS/EXONS_INTRONS/SMCPP2/analysis_haw_8_iter_1"
+
+grep -v "label" $DEMDIR/*csv |awk -F',' '{print$1","$2*2","$3","$4","$5}' - | sed -e '1 i\label,x,y,plot_type,plot_num' - >$DEMDIR/TEST_2T.csv
+sed -i "s|/projects/phillipslab/ateterina/CE_haw_subset/data/BAMS/EXONS_INTRONS/SMCPP2/analysis_haw_8_iter_1/plot_CE8_aut_est_iter_1.csv:||g" $DEMDIR/TEST_2T.csv
+
+DEM="/projects/phillipslab/ateterina/CE_haw_subset/data/BAMS/EXONS_INTRONS/SMCPP2/analysis_haw_8_iter_1/TEST_2T.csv"
+
+
+# Simulate data
+${SIMULATE} \
+        --vcf ${VCF} \
+        --genome ${GENOME} \
+        --mask ${MASK} \
+        --projectDir ${DIR} \
+        --assumedMu ${MU} \
+        --upperRhoThetaRatio ${URTR} \
+        --nTrain 13000 \
+        --nVali 2000 \
+        --nTest 100 \
+        --seed ${SEED} \
+        --phased \
+        -n ${DEM} \
+        -t 10 \
+        -l 1
+
+# Train network
+${TRAIN} \
+        --projectDir ${DIR} \
+        --nEpochs 2 \
+        --nValSteps 2 \
+        --seed ${SEED}
+
+# Predict
+${PREDICT} \
+        --vcf ${VCF} \
+        --projectDir ${DIR} \
+        --seed ${SEED}
+
+# Parametric Bootstrapping
+${BSCORRECT} \
+        --projectDir ${DIR} \
+        --nSlice 2 \
+        --nReps 2 \
+        --seed ${SEED}

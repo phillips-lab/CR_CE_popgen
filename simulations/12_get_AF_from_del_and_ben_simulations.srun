@@ -1,0 +1,63 @@
+#!/bin/bash
+#SBATCH -A phillipslab
+#SBATCH --partition=phillips       ### Partition
+#SBATCH --job-name=vcf    ### Job Name
+#SBATCH --time=5:00:00        ### WallTime
+#SBATCH --nodes=1              ### Number of Nodes
+#SBATCH --ntasks=1             ### Number of tasks per array job
+#SBATCH --array=0-2100%100          ### Array index
+#SBATCH --cpus-per-task=1            ### Number of CPU cores per task
+export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
+
+
+module use /projects/apps/shared/modulefiles/;
+module load python3 tskit SLiM/dev;
+
+benscript="worms_mutations.slim"
+path="/projects/phillipslab/ateterina/slim/worms_snakemake"
+
+
+for dir in sim30rep sim70rep simmut15 balancing;do
+
+cd $path/$dir
+
+
+  listfiles=(d*C_15/*.full_out.txt)
+  name=${listfiles[$SLURM_ARRAY_TASK_ID]}
+
+  filename=(${name//\// })
+  echo $filename
+
+
+
+  cd ${filename[0]}
+  file=${filename[1]}
+  path=$(pwd)
+
+  file2=${file/.full/}
+  param=(${file2//_/ })
+
+
+  POP_SIZE=$(awk '{print}' <<< "${param[3]}")
+  MSCALE=$(awk '{print}' <<< "${param[7]}")
+  DEL_FRAC=$(awk '{print}' <<< "${param[9]}")
+  BEN_FRAC=$(awk '{print}' <<< "${param[11]}")
+  DEL_MEAN_ARM=$(awk '{print}' <<< "${param[13]}")
+  DEL_MEAN_CENT=$(awk '{print}' <<< "${param[15]}")
+  BEN_MEAN_ARM=$(awk '{print}' <<< "${param[17]}")
+  BEN_MEAN_CENT=$(awk '{print}' <<< "${param[19]}")
+
+
+#echo $MSCALE
+#echo $DEL_FRAC
+
+  slim -M  -d filename="'$file'" -d path="'$path'" -d POP_SIZE=$POP_SIZE -d MSCALE=$MSCALE -d DEL_FRAC=$DEL_FRAC -d BEN_FRAC=$BEN_FRAC -d DEL_MEAN_ARM=$DEL_MEAN_ARM -d DEL_MEAN_CENT=$DEL_MEAN_CENT -d BEN_MEAN_ARM=$BEN_MEAN_ARM -d BEN_MEAN_CENT=$BEN_MEAN_CENT  $path/$benscript
+
+  sort -g -k2 -k1 ${file}.muts.O.S.txt > ${file}.muts.O.S.sort.txt
+  sort -g -k2 -k1 ${file/.full_out.txt/.muts.txt} > ${file/.full_out.txt/.muts.sort.txt}
+
+#uff, the mutation sorted slightly different, so I sort them again and then check positions and types
+
+  paste -d'\t' ${file/.full_out.txt/.muts.sort.txt} ${file}.muts.O.S.sort.txt  > ${file/.full_out.txt/.ALLMUT.txt}
+
+done

@@ -1,0 +1,30 @@
+#!/bin/bash
+#SBATCH -A phillipslab
+#SBATCH --partition=phillips       ### Partition
+#SBATCH --job-name=GATK    ### Job Name
+#SBATCH --time=240:00:00        ### WallTime
+#SBATCH --nodes=1              ### Number of Nodes
+#SBATCH --ntasks=1             ### Number of tasks per array job
+#SBATCH --array=0-18           ### Array index
+#SBATCH --cpus-per-task=1            ### Number of CPU cores per task
+export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
+
+
+module load java easybuild GATK
+ref="/projects/phillipslab/shared/ref_genomes/CR_PB_HIC/NCBI/CR.ncbi.softmasked.fasta"
+tmp="/projects/phillipslab/ateterina/tmp"
+GATK="/projects/phillipslab/ateterina/scripts/gatk-4.1.4.1/gatk"
+
+cd /projects/phillipslab/ateterina/CR_popgen/data/reads/BAMS
+
+LISTFILES=(*re.bam)
+file=${LISTFILES[$SLURM_ARRAY_TASK_ID]}
+
+
+java -Xmx5g -jar $EBROOTGATK/GenomeAnalysisTK.jar -T RealignerTargetCreator -R $ref -I $file -o ${file/.re.bam/.intervals} ;
+java -Xmx5g -Djava.io.tmpdir=$tmp  -jar $EBROOTGATK/GenomeAnalysisTK.jar -T IndelRealigner -I $file -R $ref -targetIntervals ${file/.re.bam/.intervals} -o ${file/.re.bam/.ind.bam};
+
+
+
+#version GATK 4.1
+$GATK --java-options "-Xmx5g -Xms5g" HaplotypeCaller -R $ref -I ${file/.re.bam/.ind.bam}  -O ${file/.re.bam/.raw.new.g.vcf} -ERC GVCF;

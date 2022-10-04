@@ -1,0 +1,36 @@
+#!/bin/bash
+#SBATCH -A phillipslab
+#SBATCH --partition=phillips       ### Partition
+#SBATCH --job-name=LDCE    ### Job Name
+#SBATCH --mem=350g
+#SBATCH --time=150:00:00        ### WallTime
+#SBATCH --nodes=1              ### Number of Nodes
+#SBATCH --ntasks=1             ### Number of tasks per array job
+#SBATCH --array=0           ### Array index
+#SBATCH --cpus-per-task=1            ### Number of CPU cores per task
+export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
+
+module load plink bcftools/1.5 R
+
+VCFI="CE_population_filt_snps_5-100_0.5_fin.vcf"
+ref="/projects/phillipslab/ateterina/CE_haw_subset/ref_245/c_elegans.PRJNA13758.WS245.genomic.fa"
+
+
+cd /projects/phillipslab/ateterina/CE_haw_subset/data/BAMS/
+
+mkdir -p LD
+cd LD
+
+
+#add ids to SNPs
+bcftools annotate --set-id +'%CHROM\_%POS\_%REF\_%FIRST_ALT'   -o CE_ids.vcf ../$VCFI
+
+plink --vcf CE_ids.vcf --recode --out CE_data --allow-extra-chr
+plink --file  CE_data --r2 inter-chr --ld-window-r2 0 --allow-extra-chr --out CE_r2_LD_windNOPRUNNING_INTER_FIN
+
+
+cat CE_r2_LD_windNOPRUNNING_INTER_FIN.ld |awk '{ wind=$1 " " int($2/100000) " " $4 " " int($5/100000); used[wind] += $7; count[wind]++; } END { for (d in used) { print d, used[d]/count[d] } }' > CE_r2_LD_windNOPRUNNING_INTER_FIN.summary
+
+
+plink --file  CE_data --r2 --ld-window-r2 0 --ld-window 99999999 --ld-window-kb 3 --allow-extra-chr --out CE_r2_LD_wind_2KB_FIN
+cat CE_r2_LD_wind_2KB_FIN.ld |awk '{ wind=$1 " " int($2/100) " " $4 " " int($5/100); used[wind] += $7; count[wind]++; } END { for (d in used) { print d, used[d]/count[d] } }' > CE_r2_LD_wind_2KB_FIN.summary

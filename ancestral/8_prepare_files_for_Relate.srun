@@ -1,0 +1,83 @@
+#!/bin/bash
+#SBATCH -A phillipslab
+#SBATCH --partition=phillips       ### Partition
+#SBATCH --job-name=ancCHR    ### Job Name
+#SBATCH --mem=10g
+#SBATCH --time=90:00:00        ### WallTime
+#SBATCH --nodes=1              ### Number of Nodes
+#SBATCH --ntasks=1             ### Number of tasks per array job
+#SBATCH --array=0-5           ### Array index
+#SBATCH --cpus-per-task=1            ### Number of CPU cores per task
+export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
+
+
+module load anaconda2 bedtools
+
+VCF="/projects/phillipslab/ateterina/CR_popgen/data/reads/BAMS/CR_WILD_population14_filt_snps_5-100_0.75_fin.vcf"
+dir="/projects/phillipslab/ateterina/ANCESTRAL/CR"
+ref="/projects/phillipslab/ateterina/ANCESTRAL/CR/genomes/GCA_010183535.1_CRPX506_genomic.chromosomes.fna"
+
+
+#folowing instructions form here https://myersgroup.github.io/relate/input_data.html#Data
+
+chromosomes=(I II III IV V X)
+chrnames=(CM021144.1 CM021145.1 CM021146.1 CM021147.1 CM021148.1 CM021149.1)
+chr=${chromosomes[$SLURM_ARRAY_TASK_ID]}
+chrname=${chrnames[$SLURM_ARRAY_TASK_ID]}
+
+
+
+
+cd $dir/ANC_FASTA_NEW/CHR_${chr}
+
+
+sed -i "s/ /\t/g" FILTER_SNPS_NO_ANC_${chr}.bed
+sed -i "s/ /\t/g" SNPS_to_A_${chr}.bed
+sed -i "s/ /\t/g" SNPS_to_T_${chr}.bed
+sed -i "s/ /\t/g" SNPS_to_G_${chr}.bed
+sed -i "s/ /\t/g" SNPS_to_C_${chr}.bed
+
+
+#finally
+cat $ref |tr "atgc" "ATGC" > PX506_ancestral_genome.fasta
+sed -i "s/$chrname/$chr/g" FILTER_SNPS_NO_ANC_${chr}.bed #intresting to do it without!!
+
+
+#prepare the VCF file
+zcat /projects/phillipslab/ateterina/CR_popgen/data/reads/BAMS/CR_WILD_population14_filt_snps_5-100_0.5_fin.noimpi2.${chr}.vcf.gz |grep -P "^$chr\t|#" - | bedtools subtract -a - -b FILTER_SNPS_NO_ANC_${chr}.bed > CR_chr_${chr}.TMP.vcf
+grep "#" $VCF > CR_chr_${chr}.vcf
+cat CR_chr_${chr}.TMP.vcf >> CR_chr_${chr}.vcf
+rm CR_chr_${chr}.TMP.vcf
+
+
+
+
+#get a sequence
+echo $chrname >seq.txt
+perl -ne 'if(/^>(\S+)/){$c=$i{$1}}$c?print:chomp;$i{$_}=1 if @ARGV' seq.txt PX506_ancestral_genome.fasta >${chr}_anc.fasta
+
+#get a mask
+perl -ne 'if(/^>(\S+)/){$c=$i{$1}}$c?print:chomp;$i{$_}=1 if @ARGV' seq.txt $ref |tr "atgc" "N" >${chr}_mask.fasta
+sed -i 's/$chrname/$chr/' ${chr}_mask.fasta
+cat ${chr}_mask.fasta |tr "ATGC" "P" > ${chr}_mask.NP.fasta
+
+bedtools maskfasta  -fi ${chr}_anc.fasta -bed SNPS_to_A_${chr}.bed -fo TMP_${chr}_anc.fasta -mc A
+mv TMP_${chr}_anc.fasta ${chr}_anc.fasta
+
+bedtools maskfasta  -fi ${chr}_anc.fasta -bed SNPS_to_T_${chr}.bed -fo TMP_${chr}_anc.fasta -mc T
+mv TMP_${chr}_anc.fasta ${chr}_anc.fasta
+
+bedtools maskfasta  -fi ${chr}_anc.fasta -bed SNPS_to_G_${chr}.bed -fo TMP_${chr}_anc.fasta -mc G
+mv TMP_${chr}_anc.fasta ${chr}_anc.fasta
+
+bedtools maskfasta  -fi ${chr}_anc.fasta -bed SNPS_to_C_${chr}.bed -fo TMP_${chr}_anc.fasta -mc C
+mv TMP_${chr}_anc.fasta ${chr}_anc.fasta
+
+
+rm PX506_ancestral_genome.fasta
+
+for i in *fasta;do
+
+	sed -i "s/>.*$/>$chr/" $i;
+
+done

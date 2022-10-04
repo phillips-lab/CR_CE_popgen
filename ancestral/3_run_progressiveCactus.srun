@@ -1,0 +1,19 @@
+#!/bin/bash
+#SBATCH -A phillipslab
+#SBATCH --partition=phillips       ### Partition
+#SBATCH --job-name=cactus_5    ### Job Name
+#SBATCH --mem=150g
+#SBATCH --time=100:00:00        ### WallTime
+#SBATCH --nodes=1              ### Number of Nodes
+#SBATCH --ntasks=1             ### Number of tasks per array job
+#SBATCH --array=0           ### Array index
+#SBATCH --cpus-per-task=4            ### Number of CPU cores per task
+export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
+
+
+cactusdir='/projects/phillipslab/ateterina/scripts/progressiveCactus/bin'
+workdir="/projects/phillipslab/ateterina/ANCESTRAL/CR"
+
+
+#4 straint of c. remanei + C.latens
+$cactusdir/runProgressiveCactus.sh --maxThreads 4 CR.seqfile_5seq.txt $workdir/cactus_out_5gen c.remanei.cactus.5gen

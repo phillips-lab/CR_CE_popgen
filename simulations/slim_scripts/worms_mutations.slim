@@ -1,0 +1,47 @@
+initialize() {
+	initializeTreeSeq();
+
+//	setSeed(SEED);
+	defineConstant("MUT_FRAC",(DEL_FRAC+BEN_FRAC));
+
+
+
+	initializeMutationRate(c(MUT_FRAC*2e-8*MSCALE, MUT_FRAC*2e-8, MUT_FRAC*2e-8*MSCALE),c(999999,1999999,2999999));
+
+	initializeMutationType("m2", 0.5, "g", -(DEL_MEAN_ARM/POP_SIZE), 0.3); // deleterious mutations weak -3/N  magick 15/N strong 150/N, we change the dominancce coeff later
+	initializeMutationType("m3", 0.5, "g", (BEN_MEAN_ARM/POP_SIZE), 0.3);  // beneficial weak magic, , we change the dominancce coeff later
+	initializeMutationType("m4", 0.5, "g", -(DEL_MEAN_CENT/POP_SIZE), 0.3); // deleterious mutations weak -3/N  magick 15/N strong 150/N, we change the dominancce coeff later
+	initializeMutationType("m5", 0.5, "g", (BEN_MEAN_CENT/POP_SIZE), 0.3);  // beneficial weak magic, , we change the dominancce coeff later
+
+	m2.convertToSubstitution =F;
+	m3.convertToSubstitution =F;
+	m4.convertToSubstitution =F;
+	m5.convertToSubstitution =F;
+
+
+	//deleteriuos+beneficial
+	initializeGenomicElementType("g1", c(m2,m3), c(DEL_FRAC,BEN_FRAC));
+	initializeGenomicElement(g1, 0, 999999);
+	initializeGenomicElementType("g2", c(m4,m5), c(DEL_FRAC,BEN_FRAC));
+	initializeGenomicElement(g2, 1000000, 1999999);
+	initializeGenomicElementType("g3", c(m2,m3), c(DEL_FRAC,BEN_FRAC));
+	initializeGenomicElement(g3, 2000000, 2999999);
+
+	//3 domains
+	initializeRecombinationRate(c(2.5e-7,1e-9,2.5e-7),c(999999,1999999,2999999));
+
+}
+
+
+1 early(){
+
+setwd(path);
+sim.readFromPopulationFile(filename);
+name2= paste0(filename +  ".muts.O.S.txt");
+deleteFile(name2);
+    for (mut in sim.mutations){
+        line = paste(c(mut.mutationType.id, mut.position,mut.originGeneration,mut.selectionCoeff), sep="\t");
+        writeFile(name2, line, append=T);
+    }
+
+}

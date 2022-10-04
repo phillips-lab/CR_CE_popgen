@@ -1,0 +1,28 @@
+#!/bin/bash
+#SBATCH -A phillipslab
+#SBATCH --partition=phillips       ### Partition
+#SBATCH --job-name=Rstats    ### Job Name
+#SBATCH --time=5:00:00        ### WallTime
+#SBATCH --nodes=1              ### Number of Nodes
+#SBATCH --ntasks=1             ### Number of tasks per array job
+#SBATCH --array=0           ### Array index
+#SBATCH --cpus-per-task=1            ### Number of CPU cores per task
+export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
+
+
+
+module load R
+scriptB="table_script_BEN.R"
+dir="/projects/phillipslab/ateterina/slim/worms_snakemake"
+
+mkdir -p $dir/BEN
+cd $dir/BEN
+
+cp $dir/sim30rep/d*/*Mut_1_Fr*.ALLMUT.txt $dir/BEN
+cp $dir/sim70rep/d*/*Mut_1_Fr*.ALLMUT.txt $dir/BEN
+cp $dir/simmut15/d*/*Mut_1_Fr*.ALLMUT.txt $dir/BEN
+cp $dir/balancing/d*/*Mut_1_Fr*.ALLMUT.txt $dir/BEN
+
+
+cd $dir/BEN
+Rscript --vanilla $dir/$scriptB SLIM_SEL_BENEFICIAL_PART.out

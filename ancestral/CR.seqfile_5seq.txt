@@ -1,0 +1,6 @@
+((((PB4641,PX356),PX439),PX506),latens);
+*PX506 /projects/phillipslab/ateterina/ANCESTRAL/CR/genomes/GCA_010183535.1_CRPX506_genomic.chromosomes.masked.fna
+PX439 /projects/phillipslab/ateterina/ANCESTRAL/CR/genomes/GCA_002259225.1_CaeRem1.0_genomic.masked.fna
+PX356 /projects/phillipslab/ateterina/ANCESTRAL/CR/genomes/GCA_001643735.2_ASM164373v2_genomic.masked.fna
+PB4641 /projects/phillipslab/ateterina/ANCESTRAL/CR/genomes/GCA_000149515.1_ASM14951v1_genomic.masked.fna
+latens /projects/phillipslab/ateterina/ANCESTRAL/CR/genomes/GCA_002259235.1_CaeLat1.0_genomic.masked.fna

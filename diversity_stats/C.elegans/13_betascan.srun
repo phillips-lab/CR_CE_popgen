@@ -1,0 +1,79 @@
+#!/bin/bash
+#SBATCH -A phillipslab
+#SBATCH --partition=phillips       ### Partition
+#SBATCH --job-name=betaCE    ### Job Name
+#SBATCH --time=35:00:00        ### WallTime
+#SBATCH --nodes=1              ### Number of Nodes
+#SBATCH --ntasks=1             ### Number of tasks per array job
+#SBATCH --array=0          ### Array index
+#SBATCH --cpus-per-task=1            ### Number of CPU cores per task
+export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
+
+
+module load bedtools
+
+
+
+ref="/projects/phillipslab/ateterina/CE_haw_subset/ref_245/c_elegans.PRJNA13758.WS245.genomic.fa"
+reffai="/projects/phillipslab/ateterina/CE_haw_subset/ref_245/c_elegans.PRJNA13758.WS245.genomic.fa.fai"
+INDEX="5-100_0.5"
+VCF="/projects/phillipslab/ateterina/CE_haw_subset/data/BAMS/CE_population_filt_snps_${INDEX}_fin.vcf"
+MASK="/projects/phillipslab/ateterina/CE_haw_subset/data/BAMS/CE_mask_these_region${INDEX}.bed"
+BED="/projects/phillipslab/ateterina/CE_haw_subset/data/BAMS/EXONS_INTRONS/CE.windows.100kb.bed"
+glactools="/projects/phillipslab/ateterina/scripts/glactools/glactools"
+betascan="/projects/phillipslab/ateterina/scripts/BetaScan/BetaScan.py"
+
+
+cd  /projects/phillipslab/ateterina/CE_haw_subset/data/BAMS/EXONS_INTRONS
+
+mkdir -p BETA
+cd BETA
+
+
+
+#bed file with windows
+bedtools makewindows -g ${ref}.fai -w 100000 > ref.windows.100kb.bed
+
+
+#make one header for all files
+if [ ! -f headerBETAF.txt ]
+then
+	        grep "#" $VCF > headerBETAF.txt
+fi
+
+
+
+cat headerBETAF.txt > CE_genotypes.GT.FORMAT_${INDEX}.vcf
+
+for chr in I II III IV V X;do
+zcat ${VCF/.vcf/.noimp2}.${chr}.vcf.gz |grep -v "#" -  >>CE_genotypes.GT.FORMAT_${INDEX}.vcf;
+
+done
+
+rm -f CE_${INDEX}.TMP*
+
+rm CE_${INDEX}.100kb.BETA
+
+while read window; do
+	    echo $window > CE_${INDEX}.TMP.TARGET.bed;
+		sed -i "s/ /\t/g" CE_${INDEX}.TMP.TARGET.bed;
+
+		cat headerBETAF.txt > CE_${INDEX}.TMP.vcf;
+		#no need to remove repeats from the window as they have filtered form the vcf
+#		bedtools intersect -b CE.TMP.TARGET.bed -a CE_genotypes.GT.FORMAT.vcf >> CE.TMP.vcf
+bedtools intersect -b CE_${INDEX}.TMP.TARGET.bed -a CE_genotypes.GT.FORMAT_${INDEX}.vcf >> CE_${INDEX}.TMP.vcf
+
+		$glactools vcfm2acf --onlyGT --fai $reffai CE_${INDEX}.TMP.vcf > CE_${INDEX}.TMP.acf.gz
+		$glactools acf2betascan --fold CE_${INDEX}.TMP.acf.gz | gzip > CE_${INDEX}.TMP.beta.txt.gz
+		python2 $betascan -i CE_${INDEX}.TMP.beta.txt.gz -fold -o CE_${INDEX}.TMP.betascores.txt
+		#remove first line
+		sed -i '1d' CE_${INDEX}.TMP.betascores.txt
+		#average values
+		awk  '{ sum += $2 } END { if (NR > 0) {print sum / NR ;} else {print "0"}}' CE_${INDEX}.TMP.betascores.txt > CE_${INDEX}.TMP.betascores.SUM.txt
+		#combine it with bad
+ 		paste -d'\t' CE_${INDEX}.TMP.TARGET.bed CE_${INDEX}.TMP.betascores.SUM.txt  >>CE_${INDEX}.100kb.BETA
+done < $BED
+
+
+rm CE_${INDEX}*TMP.vcf
+rm CE_${INDEX}.TMP*

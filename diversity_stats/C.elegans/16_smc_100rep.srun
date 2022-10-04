@@ -1,0 +1,79 @@
+#!/bin/bash
+#SBATCH -A phillipslab
+#SBATCH --partition=phillips       ### Partition
+#SBATCH --job-name=smcppCE    ### Job Name
+#SBATCH --time=30:00:00        ### WallTime
+#SBATCH --nodes=1              ### Number of Nodes
+#SBATCH --ntasks=1             ### Number of tasks per array job
+#SBATCH --array=0-99           ### Array index
+#SBATCH --cpus-per-task=10            ### Number of CPU cores per task
+export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
+
+### SMC++ analysis
+source ~/.bashrc
+conda activate smcpp
+
+ref="/projects/phillipslab/ateterina/CE_haw_subset/ref_245/c_elegans.PRJNA13758.WS245.genomic.fa"
+VCF="/projects/phillipslab/ateterina/CE_haw_subset/data/BAMS/CE_population_filt_snps_final_NEW.vcf"
+NAMES="/projects/phillipslab/ateterina/CE_haw_subset/data/BAMS/EXONS_INTRONS/SMCPP/NAMES8.txt"
+
+cd /projects/phillipslab/ateterina/CE_haw_subset/data/BAMS/EXONS_INTRONS
+
+mkdir -p SMCPP2
+cd SMCPP2
+
+
+#pick individuals
+iter=$(($SLURM_ARRAY_TASK_ID+1))
+
+echo $iter
+
+IND=$(sed -n "${iter}p" /projects/phillipslab/ateterina/CE_haw_subset/data/BAMS/EXONS_INTRONS/SMCPP/NAMES8.txt)
+
+echo $IND
+
+#for chr in I III IV;do
+for chr in II;do
+
+    mkdir -p haw_8_iter_${iter}
+
+    smc++ vcf2smc --cores 10 -m CE_MASK.bed.gz ${VCF}.gz haw_8_iter_${iter}/$chr.smc.gz $chr Pop1:${IND}
+
+done
+
+
+####################################3
+mkdir -p analysis_haw_8_iter_${iter}
+smc++ estimate --cores 10 -o analysis_haw_8_iter_${iter}/ 1.15e-9 haw_8_iter_${iter}/*.smc.gz
+
+
+###################################
+cd analysis_haw_8_iter_${iter}
+smc++ plot --csv plot_CE8_aut_est_iter_${iter}.png  model.final.json
+
+#https://github.com/popgenmethods/smcpp/issues/82
+#mu'=mu/(1+F)
+
+
+
+
+###now for all chromosomes
+
+cd /projects/phillipslab/ateterina/CE_haw_subset/data/BAMS/EXONS_INTRONS/SMCPP2
+
+for chr in I II III IV V X;do
+#for chr in II;do
+
+	mkdir -p haw_8_iter_${iter}_CHR_${chr}
+
+	smc++ vcf2smc --cores 10 -m ../SMCPP2/CE_MASK.bed.gz ${VCF}.gz haw_8_iter_${iter}_CHR_${chr}/$chr.smc.gz $chr Pop1:${IND}
+	mkdir -p analysis_haw_8_iter_${iter}_CHR_${chr}
+	smc++ estimate --cores 10 -o analysis_haw_8_iter_${iter}_CHR_${chr}/ 1.15e-9 haw_8_iter_${iter}_CHR_${chr}/*.smc.gz
+
+
+	###################################
+	cd analysis_haw_8_iter_${iter}_CHR_${chr}
+	smc++ plot --csv plot_CE8_aut_est_iter_${iter}_CHR_${chr}.png  model.final.json
+ cd ..
+
+done

@@ -1,0 +1,36 @@
+#!/bin/bash
+#SBATCH -A phillipslab
+#SBATCH --partition=phillips       ### Partition
+#SBATCH --nodelist=n219
+#SBATCH --job-name=12stats    ### Job Name
+#SBATCH --time=15:00:00        ### WallTime
+#SBATCH --nodes=1              ### Number of Nodes
+#SBATCH --ntasks=1             ### Number of tasks per array job
+#SBATCH --array=0           ### Array index
+#SBATCH --cpus-per-task=1            ### Number of CPU cores per task
+export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
+
+
+generateFiles="/projects/phillipslab/ateterina/CR_popgen/scripts/combine_stats_bootstrap_rep.py"
+generateSortedFiles="/projects/phillipslab/ateterina/CR_popgen/scripts/combine_stats_bootstrap_rep_sort.py"
+INDEX="5-100_0.5"
+BETA="/projects/phillipslab/ateterina/CE_haw_subset/data/BAMS/EXONS_INTRONS/BETA/CE_${INDEX}.100kb.BETA"
+
+
+DOMAINS="/projects/phillipslab/ateterina/CE_haw_subset/data/BAMS/CE_DOMAINS.txt"
+dir="/projects/phillipslab/ateterina/CE_haw_subset/data/BAMS"
+
+cd $dir
+
+#VCF for CNN, only 4 chromosomes
+
+mkdir -p INPUT_CNN
+cd INPUT_CNN
+
+
+
+for chr in I II III IV;do
+
+	python3 $generateSortedFiles -i $dir/CE_population_filt_snps_${INDEX}_fin.NOPHASE.${chr}.100K.0.1.stats -b $BETA -d $DOMAINS  -o CE_emp_${INDEX}_input_chr_${chr}_stats --repl 50
+
+done

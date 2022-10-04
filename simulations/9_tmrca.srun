@@ -1,0 +1,25 @@
+#!/bin/bash
+#SBATCH -A phillipslab
+#SBATCH --partition=phillips       ### Partition
+#SBATCH --job-name=tmrca    ### Job Name
+#SBATCH --time=15:00:00        ### WallTime
+#SBATCH --nodes=1              ### Number of Nodes
+#SBATCH --ntasks=1             ### Number of tasks per array job
+#SBATCH --array=0-2400%140          ### Array index
+#SBATCH --cpus-per-task=1            ### Number of CPU cores per task
+export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
+
+####### --mem=32G
+#module use /projects/apps/shared/modulefiles/
+#module load python3 tskit SLiM/dev
+#module load anaconda3
+
+treeh="/projects/phillipslab/ateterina/slim/worms_snakemake/tree_heights_table.py"
+
+cd sim30rep # and others
+listfiles=(*.trees)
+
+
+	file=${listfiles[$SLURM_ARRAY_TASK_ID]}
+
+	python3 $treeh -t $file >${file/trees/TREE_HEIGH}

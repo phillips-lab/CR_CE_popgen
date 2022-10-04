@@ -1,0 +1,71 @@
+#!/bin/bash
+#SBATCH -A phillipslab
+#SBATCH --partition=phillips       ### Partition
+#SBATCH --job-name=parents    ### Job Name
+#SBATCH --mem=20G
+#SBATCH --time=50:00:00        ### WallTime
+#SBATCH --nodes=1              ### Number of Nodes
+#SBATCH --ntasks=1             ### Number of tasks per array job
+#SBATCH --array=0           ### Array index
+#SBATCH --cpus-per-task=5            ### Number of CPU cores per task
+export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
+
+
+module load java easybuild GATK
+ref="/projects/phillipslab/shared/ref_genomes/CR_PB_HIC/NCBI/CR.ncbi.softmasked.fasta"
+#GATK="/projects/phillipslab/ateterina/scripts/gatk-4.0.1.1/gatk-package-4.0.1.1-local.jar"
+tmp="/projects/phillipslab/ateterina/tmp"
+GATK="/projects/phillipslab/ateterina/scripts/gatk-4.1.4.1/gatk"
+cd /projects/phillipslab/ateterina/CR_popgen/data/reads/BAMS
+
+
+cd /projects/phillipslab/ateterina/CR_popgen/data/reads/BAMS
+
+$GATK --java-options "-Xmx15g -Xms10g" \
+	          GatherVcfs \
+            -I Parents_full_output.I.vcf \
+            -I Parents_full_output.II.vcf \
+            -I Parents_full_output.III.vcf \
+            -I Parents_full_output.IV.vcf \
+            -I Parents_full_output.V.vcf \
+            -I Parents_full_output.X.vcf \
+	         --OUTPUT Parents_raw.vcf.vcf
+
+
+mv CR_WILD_population_raw* /projects/phillipslab/ateterina/CR_map/FINAL/Parents/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        #java -Xmx30g -jar $EBROOTGATK/GenomeAnalysisTK.jar -R $ref -T GenotypeGVCFs -O CR_bwa_GATK.BEST.invar.vcf -allSites \
+#    -V /projects/phillipslab/ateterina/CR_popgen/data/reads/pop_database_${CHR} -newQual ;
+
+
+
+###call all sites (invar/var)
+#samples=$(find . | sed 's/.\///' | grep -E '.raw.g.vcf$' | sed 's/^/--variant /')
+#OLD#WRONG!#java -Xmx30g -jar $EBROOTGATK/GenomeAnalysisTK.jar -R $ref -T GenotypeGVCFs -o CR_bwa_GATK.genotype.invar.vcf -allSites $(echo $samples);
+
+
+
+#GATK="/projects/phillipslab/ateterina/scripts/gatk-4.1.4.1/gatk"
+#cd /projects/phillipslab/ateterina/CR_popgen/data/reads/BAMS
+
+
+
+###LISTFILES=(*ind.bam)
+###file=${LISTFILES[$SLURM_ARRAY_TASK_ID]}
+
+###$GATK --java-options "-Xmx5g -Xms5g" HaplotypeCaller -R $ref -I ${file}  -O ${file/.ind.bam/.raw.new.g.vcf} -ERC GVCF;

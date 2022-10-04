@@ -1,0 +1,27 @@
+#!/bin/bash
+#SBATCH -A phillipslab
+#SBATCH --partition=phillips       ### Partition
+#SBATCH --job-name=het    ### Job Name
+#SBATCH --time=15:00:00        ### WallTime
+#SBATCH --nodes=1              ### Number of Nodes
+#SBATCH --ntasks=1             ### Number of tasks per array job
+#SBATCH --array=0           ### Array index
+#SBATCH --cpus-per-task=1            ### Number of CPU cores per task
+export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
+
+cd /projects/phillipslab/ateterina/CR_popgen/data/reads/BAMS
+
+module load bedtools
+
+### rough estimation of heterozygosity
+for i in {10..23};do
+  echo $(grep -m 1 "CHR" CR_WILD_population14_raw.vcf | cut -f$i - );
+  grep -vP "[#X]" CR_WILD_population14_raw.vcf | cut -f$i -  | awk -F":" 'BEGIN {SUM=0;HET=0;} {if ($1 ~ /0\/0/ || $1 ~ /1\/1/) { SUM += 1; } else if ($1 ~ /0\/1/ || $1 ~ /1\/0/) {SUM = SUM += 1; HET += 1;}} END {print HET/SUM}' - ;
+
+done > CR_het_biallelic_autosomes.txt
+
+
+### estimation for the substitution spectrum
+grep -v "#" CR_WILD_population14_filt_snps_5-100_0.5_fin.vcf |awk '{print"\t"$1"\t"int($2/100000)"\t"$4"\t"$5}' - |sort -n -k1 -k2 - |uniq -c | sed -E "s/^( )*//g" - >CR_polim_counts.txt
+
+bedtools coverage -a CRPX506.windows.100kb.bed -b CR_mask_these_region_5-100_0.5_WILD14.bed > CR_fraction_of_masked.bed

@@ -1,0 +1,83 @@
+#!/bin/bash
+#SBATCH -A phillipslab
+#SBATCH --partition=phillips       ### Partition
+#SBATCH --mem=50g
+#SBATCH --job-name=lepmap3    ### Job Name
+#SBATCH --time=8:00:00        ### WallTime
+#SBATCH --nodes=1              ### Number of Nodes
+#SBATCH --ntasks=1             ### Number of tasks per array job
+#SBATCH --array=0           ### Array index
+#SBATCH --cpus-per-task=1            ### Number of CPU cores per task
+
+export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
+
+
+lepmap3="/projects/phillipslab/ateterina/scripts/LEP-MAP3-v.0.2/scripts"
+Lepmap3v02="/projects/phillipslab/ateterina/scripts/LEP-MAP3-v.0.2/bin"
+
+module load samtools java
+
+
+cd /projects/phillipslab/ateterina/CR_map/FINAL/stacks/BAMS2/
+
+#sorted bams - space separated list of qc.bam files ()
+#ls *bam >sorted_bams
+#put parents at the beginning
+#sed -i ':a;N;$!ba;s/\n/ /g' sorted_bams
+#cp sorted_bams mapping.txt
+#sed -i 's/.bam//g' mapping.txt
+
+#Recalibrated bams
+samtools mpileup -q 10 -Q 10 -s $(cat sorted_bams)|awk -vlimit2=250 -f $lepmap3/pileupParser2.awk|awk -f $lepmap3/pileup2posterior.awk|gzip >postOK10.gz
+
+
+#SPLIT BY CHROMOSOME
+
+for chr in I II III IV V X;do
+
+	zcat postOK10.gz |grep -P "CHR|^$chr\t" - > $chr.post
+
+done
+
+
+#Autosomes
+
+for chr in I II III IV V;do
+
+	echo $chr;
+	cat $chr.post| java -cp $Lepmap3v02 ParentCall2 data=PED4F.txt posteriorFile=- removeNonInformative=1 |gzip >$chr.callGP2.gz;
+
+
+	#without 00-11 filtering
+	zcat $chr.callGP.gz|java -cp $Lepmap3v02 Filtering2 data=- dataTolerance=0.001 |gzip >${chr}_f.call.gz
+
+	rm $chr.order.file
+	number=$(zcat ${chr}_f.call.gz | grep -v -P "CHR|#" - |wc -l);
+	echo $number;
+	for i in $(seq 1 $number);do echo $i >>$chr.order.file; done
+
+	zcat ${chr}_f.call.gz | java -cp $Lepmap3v02 OrderMarkers2 evaluateOrder=$chr.order.file data=- improveOrder=0 sexAveraged=1 grandparentPhase=1 >$chr.map.txt
+	zcat ${chr}_f.call.gz | cut -f1-2 - > $chr.POSITIONS.txt
+	cat $chr.map.txt | cut -f1-3 - >$chr.REC.MAP.SHORT.txt
+
+	tail -n1 $chr.REC.MAP.SHORT.txt
+
+done
+
+
+###X chromosome
+cat X.post| java -cp $Lepmap3v02 ParentCall2 data=PED4F.txt posteriorFile=- removeNonInformative=1 XLimit=2 |gzip >X.callGP.gz;
+zcat X.callGP.gz|java -cp $Lepmap3v02 Filtering2 data=- dataTolerance=0.001 |gzip >X_f.call.gz
+
+
+rm X.order.file
+number=$(zcat X_f.call.gz | grep -v -P "CHR|#" - |wc -l);
+echo $number;
+for i in $(seq 1 $number);do echo $i >>X.order.file; done
+
+
+zcat X_f.call.gz | java -cp $Lepmap3v02 OrderMarkers2 evaluateOrder=X.order.file data=- improveOrder=0 recombination1=0 grandparentPhase=1 > X.map.txt
+zcat X_f.call.gz | cut -f1-2 - > X.POSITIONS.txt
+cat X.map.txt | cut -f1-3 - >X.REC.MAP.SHORT.txt
+
+tail -n1 X.REC.MAP.SHORT.txt

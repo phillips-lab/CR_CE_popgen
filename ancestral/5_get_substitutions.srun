@@ -1,0 +1,57 @@
+#!/bin/bash
+#SBATCH -A phillipslab
+#SBATCH --partition=phillips       ### Partition
+#SBATCH --job-name=ancestor    ### Job Name
+#SBATCH --mem=30g
+#SBATCH --time=60:00:00        ### WallTime
+#SBATCH --nodes=1              ### Number of Nodes
+#SBATCH --ntasks=1             ### Number of tasks per array job
+#SBATCH --array=0           ### Array index
+#SBATCH --cpus-per-task=1            ### Number of CPU cores per task
+export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
+
+
+module load anaconda2
+
+ref="/projects/phillipslab/ateterina/ANCESTRAL/CR/genomes/GCA_010183535.1_CRPX506_genomic.chromosomes.fna"
+
+###Extract ancestral substitutions + GC content + covereg fractions
+
+module load samtools bedtools
+
+hal2fasta c.remanei.cactus.5gen Anc0 >Anc0.fasta
+samtools faidx Anc0.fasta
+awk '{print $1"\t"0"\t"$2}' Anc0.fasta.fai >Anc0.fasta.bed
+
+
+halLiftover c.remanei.cactus.5gen Anc0 Anc0.fasta.bed PX506 Position_of_Anc0_on_PX506.bed
+sort -k1,1 -k2,2n Position_of_Anc0_on_PX506.bed >Position_of_Anc0_on_PX506.s.bed
+bedtools subtract -a Position_of_Anc0_on_PX506.s.bed -b MASKS/PX506-genmap-50-4.2.bed >Position_with_Anc_states_non_rep.bed
+
+
+halSnps c.remanei.cactus.5gen PX506 Anc0 --tsv Anc0_to_Px506_snps2.tsv
+
+mkdir -p WINDOWS_GC_100kb
+cd WINDOWS_GC_100kb
+
+#covered positions
+bedtools makewindows -g $ref.fai -w 100000 > CRPX506.windows.bed
+bedtools coverage -b ../Position_with_Anc_states_non_rep.bed -a CRPX506.windows.bed >Ancestral_states_coverage_100kb.bed
+
+#substitutions
+grep -v "ref" ../Anc0_to_Px506_snps2.tsv| awk '{print $1"\t"int($2/100000)"\t"$3"\t"$4}' - | tr "atgc" "ATGC" |sort -k1,1 -k2,2n |uniq -c > CHR_POS_PX506_ANC0_100kb.txt
+sed -i -e 's/ *//' -e 's/ /\t/' CHR_POS_PX506_ANC0_100kb.txt
+
+rm -f ANCESTRAL_GC.txt
+
+#Ancestral GC content
+while read window; do
+
+  echo $window > TARGET.bed
+  sed -i "s/ /\t/g" TARGET.bed
+  halLiftover ../c.remanei.cactus.5gen PX506 TARGET.bed Anc0 WINDOW.bed
+  bedtools nuc -fi ../Anc0.fasta -bed WINDOW.bed> GC_content_WINDOW.bed
+  grep -v "#" GC_content_WINDOW.bed | awk '{ sum += $5 } END { if (NR > 0) print sum / NR }' >GC.txt
+  paste -d'\t' TARGET.bed GC.txt >>ANCESTRAL_GC.txt
+
+done < CRPX506.windows.bed

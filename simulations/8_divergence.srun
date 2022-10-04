@@ -1,0 +1,30 @@
+#!/bin/bash
+#SBATCH -A phillipslab
+#SBATCH --partition=phillips       ### Partition
+#SBATCH --job-name=diverg    ### Job Name
+#SBATCH --time=15:00:00        ### WallTime
+#SBATCH --nodes=1              ### Number of Nodes
+#SBATCH --ntasks=1             ### Number of tasks per array job
+#SBATCH --array=0-5000%100           ### Array index
+#SBATCH --cpus-per-task=1            ### Number of CPU cores per task
+export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
+
+
+module load bedtools
+cd sim30rep
+
+
+listfiles=(d*/*[015].vcf)
+VCF=${listfiles[$SLURM_ARRAY_TASK_ID]}
+
+
+#take a random individual and all non reference sites
+grep -v "#" $VCF | cut -f1-10 - | grep -v "0|0" - |awk '{if($10=="1|1" || $10=="1|0") print $1"\t"$2-1"\t"$2"\t"1}'> ${VCF/.vcf/.TMP.bed}
+sed -i "s/-1/0/g" ${VCF/.vcf/.TMP.bed}
+
+#transform to bed file
+#count
+bedtools map -b ${VCF/.vcf/.TMP.bed} -a ../../ref.windows.40kb.bed -c 4 -o count > ${VCF/.vcf/.divergence}
+
+#remove trash
+rm ${VCF/.vcf/.TMP.bed}

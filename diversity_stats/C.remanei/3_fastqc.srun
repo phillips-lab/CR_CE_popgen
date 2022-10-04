@@ -1,0 +1,14 @@
+#!/bin/bash
+#SBATCH -A phillipslab
+#SBATCH --partition=phillips       ### Partition
+#SBATCH --job-name=qc2    ### Job Name
+#SBATCH --time=00:240:00        ### WallTime
+#SBATCH --nodes=1              ### Number of Nodes
+#SBATCH --ntasks=1             ### Number of tasks per array job
+#SBATCH --array=0-37           ### Array index
+
+cd /projects/phillipslab/ateterina/CR_popgen/data/reads/
+
+LISTFILES=(*fp*.ok.fastq)
+mkdir fastqc_filt;
+fastqc ${LISTFILES[$SLURM_ARRAY_TASK_ID]} -o fastqc_filt &> ${LISTFILES[$SLURM_ARRAY_TASK_ID]}.log

@@ -1,0 +1,40 @@
+#!/bin/bash
+#SBATCH -A phillipslab
+#SBATCH --partition=phillips       ### Partition
+#SBATCH --job-name=ancestorsML    ### Job Name
+#SBATCH --mem=150g
+#SBATCH --time=100:00:00        ### WallTime
+#SBATCH --nodes=1              ### Number of Nodes
+#SBATCH --ntasks=1             ### Number of tasks per array job
+#SBATCH --array=0           ### Array index
+#SBATCH --cpus-per-task=1            ### Number of CPU cores per task
+export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
+
+
+module load anaconda2
+
+cactusdir='/projects/phillipslab/ateterina/scripts/progressiveCactus/bin'
+workdir="/projects/phillipslab/ateterina/ANCESTRAL/CR"
+ancestors="/projects/phillipslab/ateterina/scripts/progressiveCactus/submodules/hal/modify/ancestorsMLMP.py"
+haltools="/projects/phillipslab/ateterina/scripts/HAL/hal/bin"
+ucsc="/projects/phillipslab/ateterina/scripts/ucsc_utils"
+
+#prepare a bed12 file fro training
+wget ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/010/183/535/GCA_010183535.1_CRPX506/GCA_010183535.1_CRPX506_genomic.gff.gz
+gunzip GCA_010183535.1_CRPX506_genomic.gff.gz
+
+
+$ucsc/gff3ToGenePred GCA_010183535.1_CRPX506_genomic.gff GCA_010183535.1_CRPX506_genomic.genePred
+$ucsc/genePredToBed GCA_010183535.1_CRPX506_genomic.genePred GCA_010183535.1_CRPX506_genomic.bed12.bed
+grep -v "CM021150.1" GCA_010183535.1_CRPX506_genomic.bed12.bed > GCA_010183535.1_CRPX506_genomic.nomt.bed
+
+
+###########################
+#first step
+
+python2 $haltools/halPhyloPTrain.py c.remanei.cactus.5gen PX506 GCA_010183535.1_CRPX506_genomic.nomt.bed phylogeny.mod
+
+#modify ancestor states
+$haltools/ancestorsML --printWrites c.remanei.cactus.5gen Anc0 phylogeny.mod >ancestorsML_changed_these_bases.txt
+
+halStats c.remanei.cactus.5gen >c.remanei.cactus.5gen.halstats

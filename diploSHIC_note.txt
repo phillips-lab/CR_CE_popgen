@@ -1,0 +1,21 @@
+############################################
+##### Note on the changes to diploSHIC: ####
+############################################
+
+
+
+
+1) in diploSHIC.py, the corresponding line was replaaces by
+cmd = pyExec + " " + diploShicDir + "makeFeatureVecsForChrArmFromVcfDiploid_nonorm.py " + " ".join([str(x) for x in cmdArgs])
+
+
+2) makeFeatureVecsForChrArmFromVcfDiploid_nonorm.py is a copy os makeFeatureVecsForChrArmFromVcfDiploid.py with the following changes:
+25c25
+< #assert winSize % numSubWins == 0 and numSubWins > 1
+---
+> assert winSize % numSubWins == 0 and numSubWins > 1
+154,155c154
+<             outVec += statVals[statName][-numSubWins:]
+<             #outVec += normalizeFeatureVec(statVals[statName][-numSubWins:])
+---
+>             outVec += normalizeFeatureVec(statVals[statName][-numSubWins:])

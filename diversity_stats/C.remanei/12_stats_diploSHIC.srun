@@ -1,0 +1,51 @@
+#!/bin/bash
+#SBATCH -A phillipslab
+#SBATCH --partition=phillips       ### Partition
+#SBATCH --nodelist=n219
+#SBATCH --job-name=12stats    ### Job Name
+#SBATCH --time=15:00:00        ### WallTime
+#SBATCH --nodes=1              ### Number of Nodes
+#SBATCH --ntasks=1             ### Number of tasks per array job
+#SBATCH --array=0           ### Array index
+#SBATCH --cpus-per-task=1            ### Number of CPU cores per task
+export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
+
+
+
+module load samtools bedtools
+ref="/projects/phillipslab/shared/ref_genomes/CR_PB_HIC/NCBI/CR.ncbi.softmasked.fasta"
+diploSHIC="/projects/phillipslab/ateterina/scripts/diploSHIC/diploSHIC.py"
+MASK="CR_mask_these_region_5-100_0.5_WILD14.bed"
+VCF="CR_WILD_population14_filt_snps_5-100_0.5_fin.vcf"
+
+name=${MASK/_these_region/}
+
+cd /projects/phillipslab/ateterina/CR_popgen/data/reads/BAMS
+
+
+#############estimate stats with diploeSHIC
+
+
+# mask the reference
+
+bedtools maskfasta -fi $ref -bed $MASK -fo ${name/.bed/.fasta}
+samtools faidx ${name/.bed/.fasta}
+
+
+#	I	17247545	3	100	101
+#	II	19935723	17420028	100	101
+#	III	17877849	37555114	100	101
+#	IV	25790997	55611746	100	101
+#	V	22502457	81660656	100	101
+#	X	21501900	104388141	100	101
+#	MtDNA	13978	126105067	100	101
+
+#not normalized stats!
+#a sligtly modified version of diploSHIC, see the "diploSHIC_note.txt" for detailes, it estimates non normaalized stats and 1 subwindow per window
+
+python $diploSHIC fvecVcf --winSize 100000 --maskFileName ${name/.bed/.fasta} --unmaskedFracCutoff 0.10 --numSubWins 1 diploid $VCF I 17247545 ${VCF/.vcf/}.NOPHASE.I.100K.0.1.stats
+python $diploSHIC fvecVcf --winSize 100000 --maskFileName ${name/.bed/.fasta} --unmaskedFracCutoff 0.10 --numSubWins 1 diploid $VCF II 19935723 ${VCF/.vcf/}.NOPHASE.II.100K.0.1.stats
+python $diploSHIC fvecVcf --winSize 100000 --maskFileName ${name/.bed/.fasta} --unmaskedFracCutoff 0.10 --numSubWins 1 diploid $VCF III 17877849 ${VCF/.vcf/}.NOPHASE.III.100K.0.1.stats
+python $diploSHIC fvecVcf --winSize 100000 --maskFileName ${name/.bed/.fasta} --unmaskedFracCutoff 0.10 --numSubWins 1 diploid $VCF IV 25790997 ${VCF/.vcf/}.NOPHASE.IV.100K.0.1.stats
+python $diploSHIC fvecVcf --winSize 100000 --maskFileName ${name/.bed/.fasta} --unmaskedFracCutoff 0.10 --numSubWins 1 diploid $VCF V 22502457 ${VCF/.vcf/}.NOPHASE.V.100K.0.1.stats
+python $diploSHIC fvecVcf --winSize 100000 --maskFileName ${name/.bed/.fasta} --unmaskedFracCutoff 0.10 --numSubWins 1 diploid $VCF X 21501900 ${VCF/.vcf/}.NOPHASE.X.100K.0.1.stats

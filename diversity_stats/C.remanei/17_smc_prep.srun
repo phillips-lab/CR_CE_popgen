@@ -1,0 +1,38 @@
+#!/bin/bash
+#SBATCH -A phillipslab
+#SBATCH --partition=phillips       ### Partition
+#SBATCH --job-name=smcppprep    ### Job Name
+#SBATCH --time=30:00:00        ### WallTime
+#SBATCH --nodes=1              ### Number of Nodes
+#SBATCH --ntasks=1             ### Number of tasks per array job
+#SBATCH --array=0           ### Array index
+#SBATCH --cpus-per-task=1            ### Number of CPU cores per task
+export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
+
+
+
+module load samtools racs-eb samtools HTSlib/1.6-intel-2017b
+
+
+ref="/projects/phillipslab/shared/ref_genomes/CR_PB_HIC/NCBI/CR.ncbi.softmasked.fasta"
+VCF="/projects/phillipslab/ateterina/CR_popgen/data/reads/BAMS/CR_WILD_population14_filt_snps_5-100_0.5_fin.vcf"
+MASK="/projects/phillipslab/ateterina/CR_popgen/data/reads/BAMS/CR_mask_these_region_5-100_0.5_WILD14.bed"
+
+
+
+cd /projects/phillipslab/ateterina/CR_popgen/data/reads/BAMS/EXONS_INTRONS
+######################################################
+#create a list of individuals
+
+grep -m 1 "CHR" $VCF |cut -f10- >LIST_WILD_IND.txt
+sed -i "s/\t/\n/g" LIST_WILD_IND.txt
+
+python /projects/phillipslab/ateterina/CR_popgen/scripts/random_individuals_smc.py  ####outputs NAMES8.txt
+
+
+
+bgzip -c $VCF >${VCF}.gz
+tabix -p vcf ${VCF}.gz
+
+bgzip -c $MASK >CR_MASK.bed.gz
+tabix CR_MASK.bed.gz

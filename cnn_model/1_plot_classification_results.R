@@ -1,0 +1,387 @@
+##############################################
+###### Plot results of classification ########
+##############################################
+
+
+
+library(ggplot2)
+library(corrplot)
+library(dichromat)
+library(gplots)
+library(dplyr)
+library(reshape)
+library(ggrepel)
+library(reshape2)
+library(mltools)
+library(gridExtra)
+library(ggtext)
+
+
+
+setwd("/Users/anastasia/Documents/Phillips_lab/drafts/CR_popgen/NETWORKS")
+
+
+
+
+output<-read.csv("empirical_predictions.tsv",header = T,sep="\t")
+
+colnames(output)<-gsub("X.","(",colnames(output))
+colnames(output)<-gsub(".$",")",perl=T,colnames(output))
+colnames(output)<-gsub("\\.\\.",",",perl=T,colnames(output))
+colnames(output)[1]<-"rep"
+colnames(output)[2]<-"Species"
+colnames(output)[3]<-"chromosome"
+
+
+
+output$Species<-gsub("CE","C. elegans", output$Species)
+output$Species<-gsub("CR","C. remanei", output$Species)
+mdata <- melt(output[,-1], id=c("Species","chromosome"))
+
+colorsMUT<-c("#183843", "#196770", "#73A8BD", "#C0BDBC", "#f2c76f", "#916b20")
+
+
+mdata %>%
+  group_by(variable) %>%
+  summarise(total = sum(value)) -> mdatasumm
+mdatasumm<-as.data.frame(mdatasumm)
+classes<-as.character(mdatasumm[mdatasumm$total>=5,]$variable)
+#domselhist<-
+mdata$variable<- factor(mdata$variable, levels=as.character(unique(mdata[order(gsub("\\(([0-9.].[0-9]*),(.*),(.*)\\)", "\\2", perl=TRUE,mdata$variable), rev(gsub("\\(([0-9.].[0-9]*),(.*),(.*)\\)", "\\3", perl=TRUE,mdata$variable))),]$variable)))
+mdata$mut <-gsub("\\(([0-9.].[0-9]*),(.*),(.*)\\)", "\\1", perl=TRUE,mdata$variable)
+mdata$mut <-as.numeric(as.character(mdata$mut))
+mdata$sel <-gsub("\\(([0-9.].[0-9]*),(.*),(.*)\\)", "\\3", perl=TRUE,mdata$variable)
+
+mdata$self <-gsub("\\(([0-9.].[0-9]*),(.*),(.*)\\)", "\\2", perl=TRUE,mdata$variable)
+mdata[mdata$self %in% c("0.0","0.9","0.98","0.999","1.0"), ]$self <-as.numeric(as.character(mdata[mdata$self %in% c("0.0","0.9","0.98","0.999","1.0"), ]$self))*100
+mdata[mdata$self == "0.0i",]$self<-"0i"
+mdata$self<-factor(mdata$self,levels=c("0","0i","90","98","99.9","100"))
+mdata2<-mdata
+mdata2$self<-as.character(mdata2$self)
+mdata2[mdata2$self == "0i",]$self<-"outcrossing\ninbreeding"
+mdata2[mdata2$self == "0",]$self<-"outcrossing"
+mdata2$self<-gsub("^([91].*)$","\\1%\nselfing",perl=T,mdata2$self)
+
+
+mdata2$self<-factor(mdata2$self,levels=c("outcrossing","outcrossing\ninbreeding","90%\nselfing","98%\nselfing","99.9%\nselfing","100%\nselfing"))
+#mdata$variable2<-gsub("\\(([0-9.].[0-9]*),(.*),(.*)\\)", "(\\1, \\3)", perl=TRUE,mdata$variable)
+#mdata$variable3<-gsub("\\(([0-9.].[0-9]*),(.*),(.*)\\)", "\\1\n\\3", perl=TRUE,mdata$variable)
+
+mdata2$variable3<-paste0(mdata$mut,"\n",mdata$sel)
+pl<-  ggplot(mdata2[mdata2$variable %in% classes,], aes(x = variable3,y=value,fill=chromosome,ordered = FALSE))  +
+  labs(title ="", x = "Mutation landscape\n Selection", y='Softmax Prediction (50 replicates)') +
+  theme_bw(base_size = 12) +
+  theme(axis.text.x = element_text(angle=0,vjust=0.5, hjust = 0.5), plot.title = element_text(hjust = 0, face = "bold"),strip.background = element_blank(),panel.grid.major = element_blank(), panel.grid.minor = element_blank(), strip.text = element_text(size = rel(0.9))) +
+  theme(legend.position = "right") + theme(strip.text.y = element_text(face = "italic")) +
+  theme(strip.background = element_blank(),panel.grid.major = element_blank(), panel.grid.minor = element_blank(), strip.text = element_text(size = rel(1)))+
+  theme(plot.margin = unit(c(1, 3, 1.5, 3), "pt")) +
+  scale_color_manual(values=colorsMUT, name="Chromosome") +
+  scale_fill_manual(values=colorsMUT, name="Chromosome") +
+  geom_bar(stat="identity") +
+  facet_grid(Species ~self,space="free",scales="free" ) +
+  theme(axis.text.x = element_text(angle = 0, vjust = 1, hjust=0.5, size=9))
+
+
+
+tiff(filename = "Fig8.tiff",width = 7.5,height = 4.8, res=300, units = "in")
+plot(pl)
+dev.off()
+
+
+########## training history
+
+
+train<-read.csv("training_history.tsv",header=T,sep="\t")
+
+
+
+mtrain<-melt(train, id=c("X"))
+
+
+mtrain$Type<-"Loss"
+mtrain[mtrain$variable %in% c("accuracy","val_accuracy"),]$Type<-"Accuracy"
+# Modify data
+mtrain$label <- NA
+mtrain[mtrain$X == 1000,]$label <- as.character(mtrain[mtrain$X == 1000,]$variable)
+
+colorsMUT2<-c("#196770","#196770","#f2c76f","#f2c76f")
+
+pl<- ggplot(mtrain, aes(x = X,y=value,color=variable,ordered = FALSE))  +
+  labs(title ="", x = "Epoch", y='Value') +
+  theme_bw(base_size = 12) +
+  theme(axis.text.x = element_text(angle=0,vjust=0.5, hjust = 0.5), plot.title = element_text(hjust = 0, face = "bold"),strip.background = element_blank(),panel.grid.major = element_blank(), panel.grid.minor = element_blank(), strip.text = element_text(size = rel(1))) +
+  theme(legend.position = "none") +
+  theme(strip.background = element_blank(),panel.grid.major = element_blank(), panel.grid.minor = element_blank(), strip.text = element_text(size = rel(1)))+
+  theme(plot.margin = unit(c(1, 3, 1.5, 3), "pt")) +
+  scale_color_manual(values=colorsMUT2, name="") +
+  scale_fill_manual(values=colorsMUT2, name="") +
+  geom_line(size=0.75) +
+  facet_wrap(.~Type,  scales="free" ) +
+  theme(axis.text.x = element_text(angle = 0, vjust = 0.5, hjust=1)) +
+  geom_label_repel(aes(label = label),na.rm = TRUE,label.size = NA, fill = NA,box.padding = unit(0.1, "lines"),colour = "#8a8a8a",size=3)
+
+tiff(filename = "S14.tiff",width = 7.2,height = 4.2, res=300, units = "in")
+
+plot(pl)
+dev.off()
+
+
+
+
+
+
+
+############### confusion matrix
+
+
+mt<-read.csv("confusion_matrix.tsv",header=T,sep="\t")
+
+colnames(mt)<-gsub("X.","(",colnames(mt))
+colnames(mt)<-gsub(".$",")",perl=T,colnames(mt))
+colnames(mt)<-gsub("\\.\\.",",",perl=T,colnames(mt))
+
+mt[,1]<-colnames(mt)[-1]
+colnames(mt)[1]<-"id"
+
+
+mt2<-melt(mt)
+
+mt2$value<-as.numeric(as.character(mt2$value))
+mt2$id<- factor(mt2$id, levels=rev(as.character(unique(mt2[order(gsub("\\(([0-9.].[0-9]*),(.*),(.*)\\)", "\\1", perl=TRUE,mt2$variable), gsub("\\(([0-9.].[0-9]*),(.*),(.*)\\)", "\\2", perl=TRUE,mt2$variable)),]$variable))))
+mt2$variable<- factor(mt2$variable, levels=as.character(unique(mt2[order(gsub("\\(([0-9.].[0-9]*),(.*),(.*)\\)", "\\1", perl=TRUE,mt2$variable), gsub("\\(([0-9.].[0-9]*),(.*),(.*)\\)", "\\2", perl=TRUE,mt2$variable)),]$variable)))
+
+
+
+#my_palette <-colorRampPalette(c("#183843",  "#73A8BD", "white", "#f2c76f","#594114"))(n = 299);
+
+conf<-ggplot(data=mt2, aes(variable, id,fill=value),ordered = FALSE)  +   labs(title ="", x = "", y='') + geom_tile(aes(fill = value)) +  theme_bw(base_size = 12) + scale_fill_gradient2(low="white",high="#196770",name="Count") +
+  labs(title ="", x = "Predicted label", y='True label') +
+  theme_bw(base_size = 15) +
+  theme(strip.background = element_blank(),panel.grid.major = element_blank(), panel.grid.minor = element_blank(), strip.text = element_text(size = rel(1)))+
+  theme(plot.margin = unit(c(1, 3, 1.5, 3), "pt"))  + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1,size = 12),axis.text.y = element_text(size = 12))
+
+
+tiff(filename = "S15.tiff",width = 13.2,height = 13.2, res=300, units = "in")
+
+plot(conf)
+dev.off()
+
+##################################
+### Matthews correlations
+install.packages("mltools")
+
+
+
+TP.ALL=0
+FP.ALL=0
+FN.ALL=0
+TN.ALL=0
+
+
+#accuracy for joint classes
+for (i in 1:72){
+  TP.ALL= TP.ALL + mt[i,i+1]
+  FP.ALL=FP.ALL + sum(mt[,i+1])-mt[i,i+1]
+  FN.ALL=FN.ALL + sum(mt[i,-1])-mt[i,i+1]
+  TN.ALL=TN.ALL +sum(mt[,-1])-mt[i,i+1]
+}
+
+
+
+combomcc<- function(factor,mat){
+
+  TP.F=0
+  FP.F=0
+  FN.F=0
+  TN.F=0
+
+  #matrix with ids in the 1st column
+  selfval<-gsub("\\(([0-9.].[0-9]*),(.*),(.*)\\)", paste0("\\",factor), perl=TRUE,mat$id)
+  selflev<-levels(as.factor(selfval))
+
+  for (cl in 1:length(selflev)){
+
+    classes<-which(selfval== selflev[cl])
+
+    TP.F= TP.F + sum(mat[classes,classes+1])
+    FP.F=FP.F + sum(mat[,classes+1])-sum(mat[classes,classes+1])
+    FN.F=FN.F + sum(mat[classes,-1])-sum(mat[classes,classes+1])
+    TN.F=TN.F +sum(mat[,-1])-sum(mat[classes,classes+1])
+  }
+
+  return(mcc(TP=TP.F, FP=FP.F, TN=TN.F, FN=FN.F))
+
+}
+
+
+
+mcc(TP=TP.ALL, FP=FP.ALL, TN=TN.ALL, FN=FN.ALL) #joint classes
+#[1] 0.5181559
+combomcc(1,mt) #mutation landscape
+#[1] 0.6766675
+combomcc(2,mt) #selfing rate
+#[1] 0.8518117
+combomcc(3,mt) #selection
+#[1] 0.7171819
+
+
+
+#####PCA
+
+
+pc<-read.csv("pca.tsv",header=T, sep ="\t",colClasses=c(rep("numeric",4),rep("character",3)))
+trn<-read.csv("pca_transform.tsv",header=T, sep ="\t")
+emp<-read.csv("empirical_inputs.tsv",header=T, sep ="\t")
+
+
+m<-trn[,2]
+P<-trn[,c(3:5)]
+
+#test<-emp[1,-c(1:3)]
+#as.matrix(test-m) %*% as.matrix(P)
+#proj.1      proj.2     proj.3
+#1 -0.02045545 -0.08485914 0.01059589
+
+#test2<-emp[1:2,-c(1:3)]
+#as.matrix(t(t(test2)-m)) %*% as.matrix(P)
+#proj.1      proj.2     proj.3
+#1 -0.02045545 -0.08485914 0.01059589
+#2 -0.01640556 -0.12963849 0.03764991
+
+
+X<-emp[,-c(1:3)]
+tremp<-as.matrix(t(t(X)-m)) %*% as.matrix(P)
+tremp<-as.data.frame(tremp)
+tremp$Species<-emp[,2]
+tremp$Species<-gsub("CE","C. elegans", tremp$Species)
+tremp$Species<-gsub("CR","C. remanei", tremp$Species)
+tremp$chromosome<-emp[,3]
+
+
+
+colorsMUT<-c("#183843", "#196770", "#73A8BD", "#C0BDBC", "#f2c76f", "#916b20")
+colorsMUT3<-c("#183843",  "#73A8BD",  "#f2c76f","#916b20")
+
+Apl<-ggplot(pc,aes(x=PC1..5.21..,y=PC2..2.19..,color=mutation )) +
+  geom_point(alpha=0.5,size=1) +
+  scale_color_manual(values=colorsMUT3, name="Mutation") +
+  labs(title ="A", x = "PC1 (5.21%)", y='PC2 (2.19%)') +
+  theme_bw(base_size = 12) +
+  theme(strip.background = element_blank(),panel.grid.major = element_blank(), panel.grid.minor = element_blank(), strip.text = element_text(size = rel(1)))+
+  theme(plot.margin = unit(c(1, 3, 1.5, 3), "pt"))
+
+
+Bpl<- ggplot(pc,aes(x=PC1..5.21..,y=PC2..2.19..,color=selfing )) +
+  geom_point(alpha=0.5,size=1) +
+  scale_color_manual(values=colorsMUT, name="Selfing") +
+  labs(title ="B", x = "PC1 (5.21%)", y='PC2 (2.19%)') +
+  theme_bw(base_size = 12) +
+  theme(strip.background = element_blank(),panel.grid.major = element_blank(), panel.grid.minor = element_blank(), strip.text = element_text(size = rel(1)))+
+  theme(plot.margin = unit(c(1, 3, 1.5, 3), "pt"))
+
+
+Cpl<-ggplot(pc,aes(x=PC1..5.21..,y=PC2..2.19..,color=selection )) +
+  geom_point(alpha=0.5,size=1) +
+  scale_color_manual(values=colorsMUT3, name="Selection") +
+  labs(title ="C", x = "PC1 (5.21%)", y='PC2 (2.19%)') +
+  theme_bw(base_size = 12) +
+  theme(strip.background = element_blank(),panel.grid.major = element_blank(), panel.grid.minor = element_blank(), strip.text = element_text(size = rel(1)))+
+  theme(plot.margin = unit(c(1, 3, 1.5, 3), "pt"))
+
+
+
+
+grid.arrange(Apl,Bpl,Cpl, nrow=3) ->plABC
+
+
+tiff(filename = "S16.tiff",width = 7.2,height = 7.2, res=300, units = "in")
+
+plot(plABC)
+dev.off()
+
+emA<-ggplot(pc,aes(x=PC1..5.21..,y=PC2..2.19..)) +
+  geom_point(alpha=0.5,size=1,color="grey") +
+  scale_color_manual(values=c("#183843", "#196770", "#73A8BD", "#f2c76f", "#916b20"), name="*C. elegans*") +
+  labs(title ="A", x = "PC1 (5.21%)", y='PC2 (2.19%)') +
+  theme_bw(base_size = 12) +
+  theme(strip.background = element_blank(),panel.grid.major = element_blank(), panel.grid.minor = element_blank(), strip.text = element_text(size = rel(1)))+
+  theme(plot.margin = unit(c(1, 3, 1.5, 3), "pt")) + theme(legend.title = element_markdown()) +
+  geom_point(data=tremp[tremp$Species=="C. elegans",],aes(x=proj.1,y=proj.2,color=chromosome),inherit.aes = FALSE,size=1.1)
+
+emB<-ggplot(pc,aes(x=PC1..5.21..,y=PC2..2.19..)) +
+  geom_point(alpha=0.5,size=1,color="grey") +
+  scale_color_manual(values=c("#183843", "#196770", "#73A8BD", "#f2c76f", "#916b20"), name="*C. remanei*") +
+  labs(title ="B", x = "PC1 (5.21%)", y='PC2 (2.19%)') +
+  theme_bw(base_size = 12) +
+  theme(strip.background = element_blank(),panel.grid.major = element_blank(), panel.grid.minor = element_blank(), strip.text = element_text(size = rel(1)))+
+  theme(plot.margin = unit(c(1, 3, 1.5, 3), "pt")) + theme(legend.title = element_markdown()) +
+  geom_point(data=tremp[tremp$Species=="C. remanei",],aes(x=proj.1,y=proj.2,color=chromosome),inherit.aes = FALSE,size=1.1)
+
+grid.arrange(emA,emB, nrow=2) ->emAB
+emAB
+
+tiff(filename = "S17.tiff",width = 7.2,height = 7.2, res=300, units = "in")
+plot(emAB)
+dev.off()
+
+
+
+
+
+
+
+
+#PC3..1.41..
+
+emA3<-ggplot(pc,aes(y=PC3..1.41..,x=PC2..2.19..)) +
+  geom_point(alpha=0.5,size=1,color="grey") +
+  scale_color_manual(values=c("#183843", "#196770", "#73A8BD", "#f2c76f", "#916b20"), name="*C. elegans*") +
+  labs(title ="A", y = "PC3 (1.41%)", x='PC2 (2.19%)') +
+  theme_bw(base_size = 12) +
+  theme(strip.background = element_blank(),panel.grid.major = element_blank(), panel.grid.minor = element_blank(), strip.text = element_text(size = rel(1)))+
+  theme(plot.margin = unit(c(1, 3, 1.5, 3), "pt")) + theme(legend.title = element_markdown()) +
+  geom_point(data=tremp[tremp$Species=="C. elegans",],aes(x=proj.2,y=proj.3,color=chromosome),inherit.aes = FALSE,size=1.1)
+
+emB3<-ggplot(pc,aes(y=PC3..1.41..,x=PC2..2.19..)) +
+  geom_point(alpha=0.5,size=1,color="grey") +
+  scale_color_manual(values=c("#183843", "#196770", "#73A8BD", "#f2c76f", "#916b20"), name="*C. remanei*") +
+  labs(title ="B", y = "PC3 (1.41%)", x='PC2 (2.19%)') +
+  theme_bw(base_size = 12) +
+  theme(strip.background = element_blank(),panel.grid.major = element_blank(), panel.grid.minor = element_blank(), strip.text = element_text(size = rel(1)))+
+  theme(plot.margin = unit(c(1, 3, 1.5, 3), "pt")) + theme(legend.title = element_markdown()) +
+  geom_point(data=tremp[tremp$Species=="C. remanei",],aes(x=proj.2,y=proj.3,color=chromosome),inherit.aes = FALSE,size=1.1)
+
+grid.arrange(emA3,emB3, nrow=2) ->emAB23
+#emAB23
+
+
+
+
+
+
+###saliency plots
+
+sal<-read.csv("saliency.tsv",header=T, sep ="\t")
+
+msal<-melt(sal[,-1],id=c("prediction"))
+msal$stat<-gsub("^(.*)_[0-9]+$","\\1",perl=TRUE,msal$variable)
+msal$wind<-gsub("^(.*)_([0-9]+)$","\\2",perl=TRUE,msal$variable)
+msal$wind<-as.numeric(as.character(msal$wind))
+msal$prediction<-gsub("(.*1.15.*)","\\1 - original", perl=TRUE, msal$prediction)
+msal$stat<-gsub("thetaW","theta",msal$stat)
+msal$stat<-gsub("tajD","TajimaD",msal$stat)
+msal$stat<-factor(msal$stat,levels=c("pi", "theta", "TajimaD", "distVar", "distSkew", "distKurt",  "ZnS", "omega", "beta"))
+
+salplot<- ggplot(msal,aes(x=wind,y=value,color=prediction,group=prediction),ordered=FALSE) +
+  scale_color_manual(values=c("#196770", "#f2c76f"), name="") +
+  labs(title ="", y = "Value", x='Genome position') +
+  theme_bw(base_size = 12) +
+  theme(strip.background = element_blank(),strip.text = element_text(size = rel(1)),panel.grid.major = element_blank(), panel.grid.minor = element_blank())+
+  theme(plot.margin = unit(c(50, 3, 1.5, 3), "pt")) +
+  geom_line() + facet_grid(stat ~. , labeller = label_parsed) + theme(legend.position="top",legend.background=element_blank()) +
+  guides(col=guide_legend(ncol=1,byrow=FALSE, title = "Prediction (Mutation, Selfing, Selection)", title.position = "top")) +
+  theme(legend.position = c(0.76,1.08))
+
+tiff(filename = "S18.tiff",width = 7.2,height = 8.2, res=300, units = "in")
+plot(salplot)
+dev.off()

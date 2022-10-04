@@ -1,0 +1,32 @@
+#!/bin/bash
+#SBATCH -A phillipslab
+#SBATCH --partition=phillips       ### Partition
+#SBATCH --job-name=smcppCE    ### Job Name
+#SBATCH --time=30:00:00        ### WallTime
+#SBATCH --nodes=1              ### Number of Nodes
+#SBATCH --ntasks=1             ### Number of tasks per array job
+#SBATCH --array=0           ### Array index
+#SBATCH --cpus-per-task=1            ### Number of CPU cores per task
+export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
+
+### prepare files for SMC++
+
+module load samtools racs-eb HTSlib/1.6-intel-2017b
+
+cd /projects/phillipslab/ateterina/CE_haw_subset/data/BAMS/EXONS_INTRONS
+ref="/projects/phillipslab/ateterina/CE_haw_subset/ref_245/c_elegans.PRJNA13758.WS245.genomic.fa"
+VCF="/projects/phillipslab/ateterina/CE_haw_subset/data/BAMS/CE_population_filt_snps_5-100_0.5_fin.vcf"
+MASK="/projects/phillipslab/ateterina/CE_haw_subset/data/BAMS/CE_mask_these_region5-100_0.5.bed"
+
+
+grep -m 1 "CHR" $VCF |cut -f10- >LIST_IND.txt
+sed -i "s/\t/\n/g" LIST_IND.txt
+python /projects/phillipslab/ateterina/CE_haw_subset/scripts/random_individuals_smc_ce.py  ####outputs NAMES.txt
+
+
+bgzip -c $VCF > ${VCF}.gz
+tabix -p vcf ${VCF}.gz
+
+
+bgzip -c $MASK > CE_MASK.bed.gz
+tabix CE_MASK.bed.gz

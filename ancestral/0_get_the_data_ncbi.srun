@@ -1,0 +1,25 @@
+#!/bin/bash
+#SBATCH -A phillipslab
+#SBATCH --partition=phillips       ### Partition
+#SBATCH --job-name=data_CR    ### Job Name
+#SBATCH --time=1:00:00        ### WallTime
+#SBATCH --nodes=1              ### Number of Nodes
+#SBATCH --ntasks=1             ### Number of tasks per array job
+#SBATCH --array=0           ### Array index
+#SBATCH --cpus-per-task=1            ### Number of CPU cores per task
+export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
+
+cd genomes
+
+
+wget ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/010/183/535/GCA_010183535.1_CRPX506/GCA_010183535.1_CRPX506_genomic.fna.gz
+
+wget ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/001/643/735/GCA_001643735.2_ASM164373v2/GCA_001643735.2_ASM164373v2_genomic.fna.gz
+
+wget ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/002/259/235/GCA_002259235.1_CaeLat1.0/GCA_002259235.1_CaeLat1.0_genomic.fna.gz
+
+wget ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/002/259/225/GCA_002259225.1_CaeRem1.0/GCA_002259225.1_CaeRem1.0_genomic.fna.gz
+
+gunzip *gz
+
+head -n 1560715 GCA_010183535.1_CRPX506_genomic.fna > GCA_010183535.1_CRPX506_genomic.chromosomes.fna

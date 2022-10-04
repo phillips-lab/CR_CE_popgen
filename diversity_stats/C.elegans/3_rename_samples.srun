@@ -1,0 +1,23 @@
+#!/bin/bash
+#SBATCH -A phillipslab
+#SBATCH --partition=phillips       ### Partition
+#SBATCH --job-name=rename    ### Job Name
+#SBATCH --time=00:240:00        ### WallTime
+#SBATCH --nodes=1              ### Number of Nodes
+#SBATCH --ntasks=1             ### Number of tasks per array job
+#SBATCH --array=0           ### Array index
+
+###################################################################
+# rename fastq files using a file with sample/isotype names #######
+###################################################################
+
+
+while read sample; do
+
+    IFS=' ' read -r one two three <<<"$sample";
+    mv ${three}_1.fastq ${two}-${one}_1.fastq;
+    mv ${three}_2.fastq ${two}-${one}_2.fastq;
+    echo ${two}-${one}_1.fastq;
+    echo ${two}-${one}_2.fastq;
+
+done < sample_names.txt

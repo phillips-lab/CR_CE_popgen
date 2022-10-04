@@ -1,0 +1,62 @@
+#!/bin/bash
+#SBATCH -A phillipslab
+#SBATCH --partition=phillips       ### Partition
+#SBATCH --job-name=exon-intron    ### Job Name
+#SBATCH --time=5:00:00        ### WallTime
+#SBATCH --nodes=1              ### Number of Nodes
+#SBATCH --ntasks=1             ### Number of tasks per array job
+#SBATCH --array=0           ### Array index
+#SBATCH --mail-type=NONE              ### Mail events (NONE, BEGIN, END, FAIL, ALL)
+#SBATCH --mail-user=teterina.anastasia@gmail.com  ### Where to send mail
+#SBATCH --cpus-per-task=1            ### Number of CPU cores per task
+
+export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
+
+
+#module load racs-eb snpEff/3.6-Java-1.7.0_80
+module load bedtools
+module load easybuild  icc/2017.1.132-GCC-6.3.0-2.27  impi/2017.1.132 VCFtools/0.1.15-Perl-5.24.1
+cd /projects/phillipslab/ateterina/CR_popgen/data/reads/BAMS/EXONS_INTRONS
+ref="/projects/phillipslab/shared/ref_genomes/CR_PB_HIC/NCBI/CR.ncbi.softmasked.fasta"
+
+#gff="GCA_010183535.1_CRPX506_genomic.gff"
+#submitted version with introns
+
+gff="CR_annotation_fixed_gaps.gff"
+
+grep  -v "CM021150.1" $gff | grep -P "\texon\t" - > Exons.gff
+grep  -v "CM021150.1" $gff | grep -P "\tintron\t" - > Introns.gff
+
+
+
+#the genome bed
+cat $ref.fai |grep -v "MtDNA" - | awk '{print $1"\t0\t"$2-1}' - >Genome.bed
+bedtools makewindows -g $ref.fai -w 100000 > CR.windows.100kb.bed
+
+
+
+########introns/exons
+
+awk '{print$1"\t"$4-1"\t"$5-1}' Introns.gff |grep -v "MtDNA" - > Introns_ok.bed
+awk '{print$1"\t"$4-1"\t"$5-1}' Exons.gff |grep -v "MtDNA" - > Exons_ok.bed
+
+bedtools subtract -a Introns_ok.bed -b ../CR_mask_these_region_5-100_0.5_WILD14.bed > Introns_fin.bed
+bedtools subtract -a Exons_ok.bed -b ../CR_mask_these_region_5-100_0.5_WILD14.bed > Exons_fin.bed
+
+vcftools --vcf ../CR_WILD_population14_filt_snps_5-100_0.5_fin.vcf  --site-pi --bed Introns_fin.bed --out CR_introns
+vcftools --vcf ../CR_WILD_population14_filt_snps_5-100_0.5_fin.vcf  --site-pi --bed Exons_fin.bed --out CR_exons
+
+
+bedtools coverage -b Introns_fin.bed -a CR.windows.100kb.bed > CR_Introns.COVERAGE_100Kb.bed
+bedtools coverage -b Exons_fin.bed -a CR.windows.100kb.bed > CR_Exons.COVERAGE_100Kb.bed
+
+
+awk '{print $1"\t"$2-1"\t"$2"\t"$3}' CR_exons.sites.pi >CR_exons.sites.pi.bed
+awk '{print $1"\t"$2-1"\t"$2"\t"$3}' CR_introns.sites.pi >CR_introns.sites.pi.bed
+
+sed -i '1d' CR_exons.sites.pi.bed
+sed -i '1d' CR_introns.sites.pi.bed
+
+
+bedtools map -b CR_exons.sites.pi.bed -a CR.windows.100kb.bed -c 4 -o sum > CR_exons_pi_100kb_FIN.bed
+bedtools map -b CR_introns.sites.pi.bed -a CR.windows.100kb.bed -c 4 -o sum > CR_introns_pi_100kb_FIN.bed

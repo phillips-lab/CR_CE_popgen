@@ -1,0 +1,23 @@
+#!/bin/bash
+#SBATCH -A phillipslab
+#SBATCH --partition=phillips       ### Partition
+#SBATCH --job-name=ref.index    ### Job Name
+#SBATCH --time=10:00:00        ### WallTime
+#SBATCH --nodelist=n218
+#SBATCH --nodes=1              ### Number of Nodes
+#SBATCH --ntasks=1             ### Number of tasks per array job
+#SBATCH --array=0           ### Array index
+#SBATCH --cpus-per-task=1            ### Number of CPU cores per task
+
+export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
+module load bwa samtools java
+
+ref_CE="/projects/phillipslab/ateterina/CE_haw_subset/ref_245/c_elegans.PRJNA13758.WS245.genomic.fa"
+picard="/projects/phillipslab/ateterina/scripts/picard/build/libs/picard.jar"
+
+cd /projects/phillipslab/ateterina/CE_haw_subset/ref_245/
+
+#index the reference
+java -jar $picard CreateSequenceDictionary R=$ref_CE O=${ref_CE/.fa/.dict}
+samtools faidx $ref_CE
+bwa index $ref_CE

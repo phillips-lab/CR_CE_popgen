@@ -1,0 +1,120 @@
+#!/bin/bash
+#SBATCH -A phillipslab
+#SBATCH --partition=phillips       ### Partition
+#SBATCH --job-name=ReLERNN    ### Job Name
+#SBATCH --time=35:00:00        ### WallTime
+#SBATCH --nodes=1              ### Number of Nodes
+#SBATCH --ntasks=1             ### Number of tasks per array job
+#SBATCH --array=0          ### Array index
+#SBATCH --cpus-per-task=10            ### Number of CPU cores per task
+export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
+
+
+#conda activate relernnenvir
+# see example here /projects/phillipslab/ateterina/scripts/ReLERNN/ReLERNN/examples
+#ReLERNN installation
+#conda create -n relernnenvir  python=3.7
+#conda activate relernnenvir
+#pip install --upgrade pip
+#pip install tensorflow
+#conda install -c anaconda cudatoolkit
+#conda install -c anaconda cudnn
+
+#git clone https://github.com/kr-colab/ReLERNN.git
+#cd ReLERNN
+#pip install .
+
+
+
+
+module load bedtools
+source ~/.bashrc
+conda activate relernnenvir
+
+
+INDEX="5-100_0.5"
+
+
+
+VCFI="/projects/phillipslab/ateterina/CR_popgen/data/reads/BAMS/CR_WILD_population14_filt_snps_${INDEX}_fin.vcf"
+MASK="/projects/phillipslab/ateterina/CR_popgen/data/reads/BAMS/CR_mask_these_region_${INDEX}_WILD14.bed"
+
+
+cd  /projects/phillipslab/ateterina/CR_popgen/data/reads/BAMS/EXONS_INTRONS
+
+mkdir -p LD
+cd LD
+
+
+reffai="/projects/phillipslab/shared/ref_genomes/CR_PB_HIC/NCBI/CR.ncbi.softmasked.fasta.fai"
+
+#make a genome file for relernn
+if [ ! -f CR.genome.relernn.bed ]
+then
+           head -n 6 $reffai |awk '{print $1"\t"0"\t"$2}' - > CR.genome.relernn.bed
+fi
+
+
+
+#combine vcf in 1
+zcat ${VCFI/.vcf/.noimpi2}.I.vcf.gz |grep  "#" - > CR_phased_combined.vcf
+
+
+for chr in I II III IV V X;do
+    zcat ${VCFI/.vcf/.noimpi2}.${chr}.vcf.gz |grep -v "#" -  >>CR_phased_combined.vcf;
+
+done
+
+
+
+#run ReLERNN for each chromosome
+
+SIMULATE="ReLERNN_SIMULATE"
+TRAIN="ReLERNN_TRAIN"
+PREDICT="ReLERNN_PREDICT"
+BSCORRECT="ReLERNN_BSCORRECT"
+SEED="42"
+MU="2.3e-9"
+URTR="10"
+DIR="./CR_M_T_10UR_output/"
+VCF="./CR_phased_combined.vcf"
+GENOME="./CR.genome.relernn.bed"
+DEM="/projects/phillipslab/ateterina/CR_popgen/data/reads/BAMS/EXONS_INTRONS/SMCPP2/analysis_tor_8_iter_1/plot_CR8_aut_est_iter_1.csv"
+
+
+# Simulate data
+${SIMULATE} \
+        --vcf ${VCF} \
+        --genome ${GENOME} \
+        --mask ${MASK} \
+        --projectDir ${DIR} \
+        --assumedMu ${MU} \
+        --upperRhoThetaRatio ${URTR} \
+        --nTrain 13000 \
+        --nVali 2000 \
+        --nTest 100 \
+        --seed ${SEED} \
+        --phased \
+        -n ${DEM} \
+        -t 10 \
+        -l 1
+
+# Train network
+${TRAIN} \
+        --projectDir ${DIR} \
+        --nEpochs 2 \
+        --nValSteps 2 \
+        --seed ${SEED}
+
+# Predict
+${PREDICT} \
+        --vcf ${VCF} \
+        --projectDir ${DIR} \
+        --seed ${SEED}
+
+# Parametric Bootstrapping
+${BSCORRECT} \
+        --projectDir ${DIR} \
+        --nSlice 2 \
+        --nReps 2 \
+        --seed ${SEED}

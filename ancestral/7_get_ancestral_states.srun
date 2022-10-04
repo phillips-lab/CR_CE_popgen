@@ -1,0 +1,78 @@
+#!/bin/bash
+#SBATCH -A phillipslab
+#SBATCH --partition=phillips       ### Partition
+#SBATCH --job-name=ancCHR    ### Job Name
+#SBATCH --mem=10g
+#SBATCH --time=90:00:00        ### WallTime
+#SBATCH --nodes=1              ### Number of Nodes
+#SBATCH --ntasks=1             ### Number of tasks per array job
+#SBATCH --array=0-5           ### Array index
+#SBATCH --cpus-per-task=1            ### Number of CPU cores per task
+export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
+
+
+
+module load anaconda2 bedtools
+
+haltools="/projects/phillipslab/ateterina/scripts/HAL/hal/bin"
+VCF="/projects/phillipslab/ateterina/CR_popgen/data/reads/BAMS/CR_WILD_population14_filt_snps_5-100_0.75_fin.vcf"
+dir="/projects/phillipslab/ateterina/ANCESTRAL/CR"
+ref="/projects/phillipslab/ateterina/ANCESTRAL/CR/genomes/GCA_010183535.1_CRPX506_genomic.chromosomes.fna"
+
+
+#folowing instructions form here https://myersgroup.github.io/relate/input_data.html#Data
+
+chromosomes=(I II III IV V X)
+chrnames=(CM021144.1 CM021145.1 CM021146.1 CM021147.1 CM021148.1 CM021149.1)
+chr=${chromosomes[$SLURM_ARRAY_TASK_ID]}
+chrname=${chrnames[$SLURM_ARRAY_TASK_ID]}
+
+
+
+cd $dir/ANC_FASTA_NEW
+
+
+mkdir -p CHR_${chr}
+cd CHR_${chr}
+
+
+#vcf2bed
+grep -v "#" $VCF |grep -P "^$chr\t" - |awk '{print $1"\t"$2-1"\t"$2}' - > SNPs_${chr}.bed
+sed -i "s/$chr/$chrname/g" SNPs_${chr}.bed
+
+
+
+#CM021144.1    17247545    92    80    81
+#CM021145.1    19935723    17463325    80    81
+#CM021146.1    17877849    37648339    80    81
+#CM021147.1    25790997    55749755    80    81
+#CM021148.1    22502457    81863232    80    81
+#CM021149.1    21501900    104647062    80    81
+
+
+
+while read window; do
+
+	  echo $window> TMP_SNPs_${chr}.bed
+		sed -i "s/ /\t/g" TMP_SNPs_${chr}.bed
+		halLiftover $dir/c.remanei.cactus.5gen PX506 TMP_SNPs_${chr}.bed Anc0 TMP_Anc0_position_${chr}.bed
+
+
+		bedtools getfasta -fi $dir/Anc0.fasta -bed TMP_Anc0_position_${chr}.bed -fo TMP_Anc0_seq_${chr}.fasta
+		ancpos=$(sed -n "2p" TMP_Anc0_seq_${chr}.fasta | tr "atgc" "ATGC")
+		echo -e "$window\t$ancpos"
+
+
+		if [[ $ancpos == "A" ]]; then
+		   	echo $window>> SNPS_to_A_${chr}.bed
+		elif [[ $ancpos == "T" ]]; then
+			echo $window>> SNPS_to_T_${chr}.bed
+		elif [[ $ancpos == "G" ]]; then
+			echo $window>> SNPS_to_G_${chr}.bed
+		elif [[ $ancpos == "C" ]]; then
+			echo $window>> SNPS_to_C_${chr}.bed
+		else
+			echo $window>> FILTER_SNPS_NO_ANC_${chr}.bed
+		fi
+
+done < SNPs_${chr}.bed

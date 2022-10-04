@@ -1,0 +1,45 @@
+#!/bin/bash
+#SBATCH -A phillipslab
+#SBATCH --partition=phillips       ### Partition
+#SBATCH --job-name=GATK4444    ### Job Name
+#SBATCH --mem=20G
+#SBATCH --time=50:00:00        ### WallTime
+#SBATCH --nodes=1              ### Number of Nodes
+#SBATCH --ntasks=1             ### Number of tasks per array job
+#SBATCH --array=0-5           ### Array index
+#SBATCH --cpus-per-task=5            ### Number of CPU cores per task
+export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
+
+
+module load java easybuild GATK
+ref="/projects/phillipslab/shared/ref_genomes/CR_PB_HIC/NCBI/CR.ncbi.softmasked.fasta"
+#GATK="/projects/phillipslab/ateterina/scripts/gatk-4.0.1.1/gatk-package-4.0.1.1-local.jar"
+tmp="/projects/phillipslab/ateterina/tmp"
+GATK="/projects/phillipslab/ateterina/scripts/gatk-4.1.4.1/gatk"
+cd /projects/phillipslab/ateterina/CR_popgen/data/reads/BAMS
+
+declare -a CHROMS=("I" "II" "III" "IV" "V" "X")
+CHR=${CHROMS[$SLURM_ARRAY_TASK_ID]}
+echo $CHR
+cd /projects/phillipslab/ateterina/CR_popgen/data/reads/BAMS
+
+samples=$(find . | sed 's/.\///' | grep -E 'H(.)*.raw.new.g.vcf$' | sed 's/^/-V /')
+#consolidate variants from many samples
+
+$GATK --java-options "-Xmx15g -Xms10g" GenomicsDBImport -R $ref \
+--genomicsdb-workspace-path WILD_pop_database_${CHR} \
+--tmp-dir $tmp -L ${CHR} --reader-threads 5 \
+ $(echo $samples);
+
+
+
+
+$GATK --java-options "-Xmx15g -Xms10g" GenotypeGVCFs \
+       -R $ref \
+       -V gendb://WILD_pop14_database_${CHR} \
+       -O CR_WILD_full14_output.${CHR}.vcf \
+       --include-non-variant-sites \
+        -G StandardAnnotation \
+        --only-output-calls-starting-in-intervals \
+        --use-new-qual-calculator \
+        -L ${CHR}

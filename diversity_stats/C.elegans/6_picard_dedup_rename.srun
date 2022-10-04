@@ -1,0 +1,30 @@
+#!/bin/bash
+#SBATCH -A phillipslab
+#SBATCH --partition=phillips       ### Partition
+#SBATCH --job-name=picard    ### Job Name
+#SBATCH --time=10:00:00        ### WallTime
+#SBATCH --nodes=1              ### Number of Nodes
+#SBATCH --ntasks=1             ### Number of tasks per array job
+#SBATCH --array=0-27           ### Array index
+#SBATCH --cpus-per-task=1            ### Number of CPU cores per task
+export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
+
+module load java samtools
+picard="/projects/phillipslab/ateterina/scripts/picard/build/libs/picard.jar"
+
+cd /projects/phillipslab/ateterina/CE_haw_subset/data/
+
+
+LISTFILES=(*s.bam)
+file=${LISTFILES[$SLURM_ARRAY_TASK_ID]}
+
+java -Xmx4g -jar $picard MarkDuplicates INPUT=$file OUTPUT=${file/.s.bam/.ded.bam} METRICS_FILE=${file/.s.bam/.ded.metrics.txt} REMOVE_DUPLICATES=true;
+samtools index ${file/.s.bam/.ded.bam};
+
+
+java -Xmx4g -jar $picard AddOrReplaceReadGroups I=${file/.s.bam/.ded.bam} O=${file/.s.bam/.re.bam} RGPL=illumina RGLB=${file/.CE.s.bam/} RGPU=NONE RGSM=${file/.CE.s.bam/};
+samtools index ${file/.s.bam/.re.bam};
+
+mkdir -p BAMS
+
+mv ${file/.s.bam/.re.bam}* BAMS/;

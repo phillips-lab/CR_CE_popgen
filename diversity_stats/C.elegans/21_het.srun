@@ -1,0 +1,19 @@
+#!/bin/bash
+#SBATCH -A phillipslab
+#SBATCH --partition=phillips       ### Partition
+#SBATCH --job-name=het    ### Job Name
+#SBATCH --time=15:00:00        ### WallTime
+#SBATCH --nodes=1              ### Number of Nodes
+#SBATCH --ntasks=1             ### Number of tasks per array job
+#SBATCH --array=0           ### Array index
+#SBATCH --cpus-per-task=1            ### Number of CPU cores per task
+export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
+
+cd /projects/phillipslab/ateterina/CE_haw_subset/data/BAMS
+
+### rough estimation of heterozygosity
+for i in {10..37};do
+  echo $(grep -m 1 "CHR" CE_population_raw.vcf | cut -f$i - );
+  grep -vP "[#X]" CE_population_raw.vcf | cut -f$i -  | awk -F":" 'BEGIN {SUM=0;HET=0;} {if ($1 ~ /0\/0/ || $1 ~ /1\/1/) { SUM += 1; } else if ($1 ~ /0\/1/ || $1 ~ /1\/0/) {SUM = SUM += 1; HET += 1;}} END {print HET/SUM}' - ;
+
+done > CE_het_biallelic_autosomes.txt

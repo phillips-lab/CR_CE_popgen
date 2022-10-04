@@ -1,0 +1,47 @@
+#!/bin/bash
+#SBATCH -A phillipslab
+#SBATCH --partition=phillips       ### Partition
+#SBATCH --job-name=Flip2BeRAD    ### Job Name
+#SBATCH --time=10:00:00        ### WallTime
+#SBATCH --nodes=1              ### Number of Nodes
+#SBATCH --ntasks=1             ### Number of tasks per array job
+#SBATCH --array=0           ### Array index
+
+
+##### Flipping RADseq reads
+##### https://github.com/tylerhether/Flip2BeRAD
+
+
+module load prl python/2.7.13
+
+fbr="/projects/phillipslab/ateterina/scripts/Flip2BeRAD/Flip2BeRAD/Flip2BeRAD.py"
+ecor1="/projects/phillipslab/ateterina/CR_map/FINAL/Barcodes_Well_EcoRI_Flip2beRAD.txt"
+
+###EcoR1###
+
+cd /projects/phillipslab/ateterina/CR_map/FINAL/data/
+echo "EcoR1";
+
+#plate_1
+cd A1;
+	echo "A1";
+	python $fbr -f plate*_R1.fastq -r plate*_R2.fastq -b $ecor1 -c AATTC -m 0 -o 2;
+cd ..;
+
+#plate_2
+cd A2;
+	echo "A2";
+	python $fbr -f plate*_R1.fastq -r plate*_R2.fastq -b $ecor1 -c AATTC -m 0 -o 2;
+cd ..;
+
+#plate_3
+cd B1;
+	echo "B1";
+	python $fbr -f plate*_R1.fastq -r plate*_R2.fastq -b $ecor1 -c AATTC -m 0 -o 2;
+cd ..;
+
+#plate_4
+cd B2;
+    echo "B2";
+		python $fbr -f plate*_R1.fastq -r plate*_R2.fastq -b $ecor1 -c AATTC -m 0 -o 2;
+cd ..;

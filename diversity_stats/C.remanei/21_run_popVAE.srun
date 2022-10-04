@@ -1,0 +1,28 @@
+#!/bin/bash
+#SBATCH -A phillipslab
+#SBATCH --partition=phillips       ### Partition
+#SBATCH --job-name=popvae    ### Job Name
+#SBATCH --mem=50g
+#SBATCH --time=30:00:00        ### WallTime
+#SBATCH --nodes=1              ### Number of Nodes
+#SBATCH --ntasks=1             ### Number of tasks per array job
+#SBATCH --array=0           ### Array index
+#SBATCH --cpus-per-task=1            ### Number of CPU cores per task
+export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
+
+
+
+source ~/.bashrc
+conda activate popvae
+
+INDEX="5-100_0.5"
+VCF="/projects/phillipslab/ateterina/CR_popgen/data/reads/BAMS/CR_WILD_population14_filt_snps_${INDEX}_fin.vcf"
+
+
+######################################################
+cd /projects/phillipslab/ateterina/CR_popgen/data/reads/BAMS/EXONS_INTRONS
+mkdir -p POPVAE
+cd POPVAE
+
+
+popvae.py --infile $VCF --out ./CR_popvae_FIN --seed 42

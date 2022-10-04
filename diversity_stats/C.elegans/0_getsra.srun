@@ -1,0 +1,15 @@
+#!/bin/bash
+#SBATCH -A phillipslab
+#SBATCH --partition=phillips       ### Partition
+#SBATCH --job-name=sra    ### Job Name
+#SBATCH --time=10:00:00        ### WallTime
+#SBATCH --nodes=1              ### Number of Nodes
+#SBATCH --ntasks=1             ### Number of tasks per array job
+#SBATCH --array=0-27           ### Array index
+
+module load easybuild sratoolkit/2.8.2-1
+
+#28 files
+SRA=$(sed -n $((${SLURM_ARRAY_TASK_ID}+1))p SRA.txt)
+
+fastq-dump --split-files $SRA

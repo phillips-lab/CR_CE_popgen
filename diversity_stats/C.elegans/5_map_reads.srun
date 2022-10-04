@@ -1,0 +1,33 @@
+#!/bin/bash
+#SBATCH -A phillipslab
+#SBATCH --partition=phillips       ### Partition
+#SBATCH --job-name=map    ### Job Name
+#SBATCH --time=10:00:00        ### WallTime
+#SBATCH --nodelist=n218
+#SBATCH --nodes=1              ### Number of Nodes
+#SBATCH --ntasks=1             ### Number of tasks per array job
+#SBATCH --array=0-27           ### Array index
+#SBATCH --cpus-per-task=10            ### Number of CPU cores per task
+
+export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
+module load bwa samtools
+
+file=${LISTFILES[$SLURM_ARRAY_TASK_ID]}
+ref_CE="/projects/phillipslab/ateterina/CE_haw_subset/ref_245/c_elegans.PRJNA13758.WS245.genomic.fa"
+
+
+
+cd /projects/phillipslab/ateterina/CE_haw_subset/data/
+LISTFILES=(*_1.fastq)
+file=${LISTFILES[$SLURM_ARRAY_TASK_ID]}
+
+name=${file/_1.fastq/}
+
+echo $file;
+bwa mem -M -t 10 -R "@RG\tID:$name\tSM:$name\tPL:Illumina\tPI:330" $ref_CE $file ${file/_1./_2.} > ${file/_1.fastq/.CE.sam} 2>${file/_1.fastq/CE.bwa.log}
+
+
+
+samtools view -@ 9 -F 4 -bS -q 20 ${file/_1.fastq/.CE.sam} | samtools sort -@ 10 -o ${file/_1.fastq/.CE.s.bam} -
+samtools index ${file/_1.fastq/.CE.s.bam};
+samtools depth -a ${file/_1.fastq/.CE.s.bam} | awk '{sum+=$3} END { print "Average = ",sum/NR; }' > ${file/_1.fastq/.cov_mean};

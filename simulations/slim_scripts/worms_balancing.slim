@@ -1,0 +1,142 @@
+initialize() {
+	initializeTreeSeq();
+	setSeed(SEED);
+	defineConstant("MUT_FRAC",(DEL_FRAC+BAL_FRAC));
+
+
+	initializeMutationRate(c(MUT_FRAC*2e-8*MSCALE, MUT_FRAC*2e-8, MUT_FRAC*2e-8*MSCALE),c(999999,1999999,2999999));
+
+	initializeMutationType("m2", 0.5, "g", -(DEL_MEAN_ARM/POP_SIZE), 0.3); // deleterious mutations weak -3/N  magick 15/N strong 150/N, we change the dominancce coeff later
+	initializeMutationType("m3", 0.5, "g", (BAL_MEAN_ARM/POP_SIZE), 0.3);  // balancing weak magic, , we change the dominancce coeff later
+	initializeMutationType("m4", 0.5, "g", -(DEL_MEAN_CENT/POP_SIZE), 0.3); // deleterious mutations weak -3/N  magick 15/N strong 150/N, we change the dominancce coeff later
+	initializeMutationType("m5", 0.5, "g", (BAL_MEAN_CENT/POP_SIZE), 0.3);  // balancing weak magic, , we change the dominancce coeff later
+
+	m2.convertToSubstitution =F;
+	m3.convertToSubstitution =F;
+	m4.convertToSubstitution =F;
+	m5.convertToSubstitution =F;
+
+
+	//deleteriuos+beneficial
+	initializeGenomicElementType("g1", c(m2,m3), c(DEL_FRAC,BAL_FRAC));
+	initializeGenomicElement(g1, 0, 999999);
+	initializeGenomicElementType("g2", c(m4,m5), c(DEL_FRAC,BAL_FRAC));
+	initializeGenomicElement(g2, 1000000, 1999999);
+	initializeGenomicElementType("g3", c(m2,m3), c(DEL_FRAC,BAL_FRAC));
+	initializeGenomicElement(g3, 2000000, 2999999);
+
+	//3 domains
+	initializeRecombinationRate(c(2.5e-7,1e-9,2.5e-7),c(999999,1999999,2999999));
+
+}
+
+
+1 early(){
+
+	print("early");
+	print(sim.generation);
+
+	sim.addSubpop("p1", POP_SIZE);
+	p1.setSelfingRate(SELF);
+
+	sim.rescheduleScriptBlock(s2, start=POP_SIZE*10, end=POP_SIZE*10);
+
+
+}
+
+mutation(m2) {
+	//deleterious
+	mut.setValue("dom", c(rbeta(3,2,6),runif(1,0,1))[sample(c(0:3),1)]);
+	return T;
+
+}
+mutation(m3) {
+	//beneficial
+	mut.setValue("dom", c(rbeta(3,5,5),runif(1,0,1))[sample(c(0:3),1)]);
+	return T;
+
+}
+
+mutation(m4) {
+	//deleterious_center
+	mut.setValue("dom", c(rbeta(3,2,6),runif(1,0,1))[sample(c(0:3),1)]);
+	return T;
+
+}
+mutation(m5) {
+	//beneficial_center
+	mut.setValue("dom", c(rbeta(3,5,5),runif(1,0,1))[sample(c(0:3),1)]);
+	return T;
+
+}
+
+fitness(m2) {
+	if (homozygous)
+		return 1.0 + mut.selectionCoeff;
+	else
+		return 1.0 + mut.getValue("dom") * mut.selectionCoeff;
+}
+
+fitness(m4) {
+	if (homozygous)
+		return 1.0 + mut.selectionCoeff;
+	else
+		return 1.0 + mut.getValue("dom") * mut.selectionCoeff;
+}
+
+fitness(m3) {
+	if (homozygous)
+		return 1.0 + mut.selectionCoeff*(1-abs(0.5-sim.mutationFrequencies(p1, mut)));
+	else
+		return 1.0 + mut.getValue("dom") * mut.selectionCoeff*(1-abs(0.5-sim.mutationFrequencies(p1, mut)));
+}
+
+
+fitness(m5) {
+    if (homozygous)
+        return 1.0 + mut.selectionCoeff*(1-abs(0.5-sim.mutationFrequencies(p1, mut)));
+    else
+        return 1.0 + mut.getValue("dom") * mut.selectionCoeff*(1-abs(0.5-sim.mutationFrequencies(p1, mut)));
+}
+
+
+//s1 2 early(){
+
+//}
+
+
+s2 3 late() {
+
+
+	//"sim_{seed}_Ne_{POP_SIZE}_Self_{SELF}_Mut_{MSCALE}_FrD_{DEL_FRAC}_FrB_{BAL_FRAC}_SDA_{DEL_MEAN_ARM}_SDC_{DEL_MEAN_CENT}_SBA_{BAL_MEAN_ARM}_SBC_{BAL_MEAN_CENT}.trees"
+
+
+	PREFIX=paste0("Ne_" + POP_SIZE + "_Self_" + SELF + "_Mut_" + MSCALE + "_FrD_" +DEL_FRAC + "_FrBa_" + BAL_FRAC + "_SDA_" + DEL_MEAN_ARM + "_SDC_" + DEL_MEAN_CENT + "_SBaA_" + BAL_MEAN_ARM + "_SBaC_" + BAL_MEAN_CENT);
+	FILEBASE=paste0("sim_"+ SEED + "_" + PREFIX + ".trees");
+	FILEBASE2=paste0("sim_"+ SEED + "_" + PREFIX +  ".muts.txt");
+	FILEBASE3=paste0("sim_"+ SEED + "_" + PREFIX +  ".full_out.txt");
+
+
+	OUTDIR=paste0("dir_"  + PREFIX);
+
+
+	//create a directory
+	if (!exists("./"+ OUTDIR)) {createDirectory(paste0("./"+ OUTDIR));}
+
+	name=paste0(OUTDIR  + "/" + FILEBASE);
+	name2=paste0(OUTDIR  + "/" + FILEBASE2);
+	name3=paste0(OUTDIR  + "/" + FILEBASE3);
+
+	sim.treeSeqOutput(name);
+	sim.outputFull(name3,binary=T,ages=T);
+
+	deleteFile(name2);
+	for (mut in sim.mutations){
+		line = paste(c(mut.mutationType.id, mut.position,mut.getValue("dom"),sim.mutationFrequencies(NULL,mut)),sep="\t");
+		writeFile(name2, line, append=T);
+	}
+
+
+	sim.simulationFinished();
+	print("Done!");
+}

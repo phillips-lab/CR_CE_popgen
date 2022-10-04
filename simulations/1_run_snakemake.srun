@@ -1,0 +1,47 @@
+#!/bin/bash
+#SBATCH -A phillipslab
+#SBATCH --partition=phillips       ### Partition
+#SBATCH --job-name=snakemake    ### Job Name
+#SBATCH --time=400:00:00        ### WallTime
+#SBATCH --nodes=1              ### Number of Nodes
+#SBATCH --ntasks=1             ### Number of tasks per array job
+#SBATCH --array=0           ### Array index
+
+
+dir="/projects/phillipslab/ateterina/slim/worms_snakemake"
+
+#first 30 replicates (neutral, 3 types neutral+deleterious simulations, 3 types of neutral+deleterious+beneficial)
+cd $dir/sim30rep
+snakemake -p --profile slurm --jobs 80
+
+#other 70 replicates
+cd $dir/sim70rep
+snakemake -p --profile slurm --jobs 80
+
+# added 1.15-1-1.15 landscape
+cd $dir/simmut15
+snakemake -p --profile slurm --jobs 80
+
+#more neutral simulations
+cd $dir/neutral_extra
+snakemake -p --profile slurm --jobs 80
+
+#add balancing selections
+cd $dir/balancing
+snakemake -p --profile slurm --jobs 80
+
+#decay of ancestral diversity
+cd $dir/decay
+snakemake -p --profile slurm --jobs 80
+
+#decay of ancestral diversity
+cd $dir/decay_balancing
+snakemake -p --profile slurm --jobs 80
+
+#exponential growth 3% per generation, neutral only
+cd $dir/exponent
+snakemake -p --profile slurm --jobs 80
+
+#fluctuation of population size (5k->15K), neutral only
+cd $dir/fluctuations
+snakemake -p --profile slurm --jobs 80

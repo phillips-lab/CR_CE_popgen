@@ -1,0 +1,50 @@
+#!/bin/bash
+#SBATCH -A phillipslab
+#SBATCH --partition=phillips       ### Partition
+#SBATCH --job-name=12stats    ### Job Name
+#SBATCH --time=200:00:00        ### WallTime
+#SBATCH --nodes=1              ### Number of Nodes
+#SBATCH --ntasks=1             ### Number of tasks per array job
+#SBATCH --array=0-4999%100           ### Array index
+#SBATCH --cpus-per-task=1            ### Number of CPU cores per task
+export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
+
+
+
+#don't load any modules it's in my conda (I installed diploSHIC ass reccomended)
+diploSHIC="/projects/phillipslab/ateterina/scripts/diploSHIC/diploSHIC.py"
+diploSHICN="/projects/phillipslab/ateterina/scripts/diploSHIC/diploSHIC_NORMALIZATION.py"
+dir="/projects/phillipslab/ateterina/slim/worms_snakemake"
+
+for simdir in sim30rep sim70rep simmut15 neutral_extra balancing;do
+
+  cd $dir/$simdir
+
+  listfiles=(d*/*vcf)
+  name=${listfiles[$SLURM_ARRAY_TASK_ID]}
+  filename=(${name//\// })
+  echo $filename
+  cd ${filename[0]}
+  file=${filename[1]}
+
+
+  python $diploSHIC fvecVcf --winSize 40000  --numSubWins 1 diploid $file 1 3000000 ${file/vcf/12stats.txt}
+  python $diploSHICN fvecVcf --winSize 1000000  --numSubWins 25 diploid $file 1 3000000 ${file/vcf/12stats_1mb_25.txt}
+  grep -P "win|-1000000|-2000000|-3000000" ${file/vcf/12stats_1mb_25.txt} >${file/vcf/12stats_1mb_25_short.txt}
+done
+
+
+for simdir in decay decay_balancing exponent fluctuations;do
+
+  cd $dir/$simdir
+
+  listfiles=(d*/*vcf)
+  name=${listfiles[$SLURM_ARRAY_TASK_ID]}
+  filename=(${name//\// })
+  echo $filename
+  cd ${filename[0]}
+  file=${filename[1]}
+
+
+  python $diploSHIC fvecVcf --winSize 100000  --numSubWins 1 diploid $file 1 3000000 ${file/vcf/12stats.txt}
+done

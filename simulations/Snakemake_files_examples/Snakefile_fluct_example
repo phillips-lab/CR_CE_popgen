@@ -1,0 +1,90 @@
+import numpy as np
+import pandas as pd
+import itertools
+
+
+np.random.seed(1)
+
+
+#converts 1.0 to 1, but keep all others float
+def formatNumber(num):
+  if num % 1 == 0:
+    return int(num)
+  else:
+    return num
+
+
+####################################################################################################
+######################################### Parameters ##########################################
+####################################################################################################
+
+POP_SIZE=[5000]
+SELF=[0, 0.9,0.98,0.999,1] #0-outcrossing
+MSCALE=[1,1.15,2]
+
+
+
+#selection fraction DEL_FRAC,BEN_FRAC,DEL_MEAN_ARM,DEL_MEAN_CENT,BEN_MEAN_ARM, BEN_MEAN_CENT
+NEUTRAL=pd.DataFrame([np.array([0,0,0,0,0,0])],columns = ['DEL_FRAC','BEN_FRAC','DEL_MEAN_ARM','DEL_MEAN_CENT','BEN_MEAN_ARM', 'BEN_MEAN_CENT'])
+
+nrep=50
+
+sim_results = pd.DataFrame(list(itertools.product(POP_SIZE,SELF,MSCALE)),columns = ['POP_SIZE', 'SELF','MSCALE']);
+ncomb = sim_results.shape[0]
+
+
+def addSel(base,sel):
+	A = pd.concat([base, sel.append([sel]*(base.shape[0]-1), ignore_index=True)], axis=1)
+	return A
+
+NEUTRAL=addSel(sim_results,NEUTRAL)
+
+sim_results=pd.concat([NEUTRAL], ignore_index=True)
+ncomb = sim_results.shape[0]
+###replicates
+sim_results = sim_results.loc[sim_results.index.repeat(nrep)].reset_index(drop=True)
+
+### random seeds (python3 generate_random_seeds.py)
+seeds = pd.read_csv("seeds_fluct.txt",names=['SEED'])
+seeds = seeds[0:nrep*ncomb]
+
+###df with all parameters
+sim_results = pd.concat([seeds.reset_index(drop=True), sim_results], axis=1)
+
+#################################################################################################
+############################################# Files #############################################
+#################################################################################################
+
+
+#SLiM can't outpit 1s and 0s as float numbers,refoermat all values to match Snakemake and SLiM outputs
+sim_results['SELF'] = [str(formatNumber(x)) for x in sim_results['SELF'].values]
+sim_results['MSCALE'] = [str(formatNumber(x)) for x in sim_results['MSCALE'].values]
+sim_results['DEL_FRAC'] = [str(formatNumber(x)) for x in sim_results['DEL_FRAC'].values]
+sim_results['BEN_FRAC'] = [str(formatNumber(x)) for x in sim_results['BEN_FRAC'].values]
+sim_results['DEL_MEAN_ARM'] = [str(formatNumber(x)) for x in sim_results['DEL_MEAN_ARM'].values]
+sim_results['DEL_MEAN_CENT'] = [str(formatNumber(x)) for x in sim_results['DEL_MEAN_CENT'].values]
+sim_results['BEN_MEAN_ARM'] = [str(formatNumber(x)) for x in sim_results['BEN_MEAN_ARM'].values]
+sim_results['BEN_MEAN_CENT'] = [str(formatNumber(x)) for x in sim_results['BEN_MEAN_CENT'].values]
+FINALGENERATION=POP_SIZE[0] *10 +100
+
+#directory and filenames
+sim_filenames = "dir_Ne_" + sim_results['POP_SIZE'].astype(str) + "_Self_" + sim_results['SELF'] + "_Mut_" + sim_results['MSCALE'] + "_FrD_" + sim_results['DEL_FRAC'] + "_FrB_" + sim_results['BEN_FRAC'] + "_SDA_" + sim_results['DEL_MEAN_ARM'] + "_SDC_" + sim_results['DEL_MEAN_CENT'] + "_SBA_" + sim_results['BEN_MEAN_ARM'] + "_SBC_" + sim_results['BEN_MEAN_CENT'] + "/" +"sim_" +sim_results['SEED'].astype(str) +"_Ne_" + sim_results['POP_SIZE'].astype(str) + "_Self_" + sim_results['SELF'] + "_Mut_" + sim_results['MSCALE'] + "_FrD_" + sim_results['DEL_FRAC'] + "_FrB_" + sim_results['BEN_FRAC'] + "_SDA_" + sim_results['DEL_MEAN_ARM'] + "_SDC_" + sim_results['DEL_MEAN_CENT'] + "_SBA_" + sim_results['BEN_MEAN_ARM'] + "_SBC_" + sim_results['BEN_MEAN_CENT'] + "_" + str(FINALGENERATION)+ ".5-15-fluct.trees"
+
+all_results = list(sim_filenames.values)
+
+
+#################################################################################################
+############################################# Rules #############################################
+#################################################################################################
+
+rule all:
+	input:
+		all_results
+
+rule sims:
+	output: "dir_Ne_{popsize}_Self_{self}_Mut_{mscale}_FrD_{delf}_FrB_{benf}_SDA_{sda}_SDC_{sdc}_SBA_{sba}_SBC_{sbc}/sim_{seed}_Ne_{popsize}_Self_{self}_Mut_{mscale}_FrD_{delf}_FrB_{benf}_SDA_{sda}_SDC_{sdc}_SBA_{sba}_SBC_{sbc}"+ "_" + str(FINALGENERATION) + ".5-15-fluct.trees"
+	shell: """
+		module use /projects/apps/shared/modulefiles/;
+		module load python3 tskit SLiM/dev;
+		slim -d SEED={wildcards.seed} -d POP_SIZE={wildcards.popsize} -d SELF={wildcards.self} -d MSCALE={wildcards.mscale} -d DEL_FRAC={wildcards.delf} -d BEN_FRAC={wildcards.benf} -d DEL_MEAN_ARM={wildcards.sda} -d DEL_MEAN_CENT={wildcards.sdc} -d BEN_MEAN_ARM={wildcards.sba} -d BEN_MEAN_CENT={wildcards.sbc} ../slim_scripts/worms_fluctuate.slim;
+	 """

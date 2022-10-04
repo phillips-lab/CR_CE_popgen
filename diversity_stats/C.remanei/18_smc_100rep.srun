@@ -1,0 +1,74 @@
+#!/bin/bash
+#SBATCH -A phillipslab
+#SBATCH --partition=phillips       ### Partition
+#SBATCH --job-name=smcppfin    ### Job Name
+#SBATCH --time=30:00:00        ### WallTime
+#SBATCH --nodes=1              ### Number of Nodes
+#SBATCH --ntasks=1             ### Number of tasks per array job
+#SBATCH --array=0-99           ### Array index
+#SBATCH --cpus-per-task=10            ### Number of CPU cores per task
+export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
+
+
+### SMC++ analysis
+
+
+module load samtools racs-eb samtools HTSlib/1.6-intel-2017b
+
+source ~/.bashrc
+conda activate smcpp
+
+
+ref="/projects/phillipslab/shared/ref_genomes/CR_PB_HIC/NCBI/CR.ncbi.softmasked.fasta"
+VCF="/projects/phillipslab/ateterina/CR_popgen/data/reads/BAMS/CR_WILD_population14_filt_snps_5-100_0.5_fin.vcf"
+MASK="/projects/phillipslab/ateterina/CR_popgen/data/reads/BAMS/CR_mask_these_region_5-100_0.5_WILD14.bed"
+#python /projects/phillipslab/ateterina/CR_popgen/scripts/random_individuals_smc.py  ####outputs NAMES.txt
+NAMES="/projects/phillipslab/ateterina/CR_popgen/data/reads/BAMS/EXONS_INTRONS/SMCPP/NAMES8.txt"
+
+
+
+cd /projects/phillipslab/ateterina/CR_popgen/data/reads/BAMS/EXONS_INTRONS
+mkdir -p SMCPP2
+cd SMCPP2
+
+#only autosomes
+iter=$(($SLURM_ARRAY_TASK_ID+1))
+echo $iter
+IND=$(sed -n "${iter}p" $NAMES)
+
+echo $IND
+
+for chr in I II III V;do
+	mkdir -p tor_8_iter_${iter}
+
+	smc++ vcf2smc --cores 10 -m CR_MASK.bed.gz ${VCF}.gz tor_8_iter_${iter}/$chr.smc.gz $chr Pop1:${IND}
+
+done
+
+
+##############################################
+mkdir -p analysis_tor_8_iter_${iter}
+smc++ estimate --cores 10 -o analysis_tor_8_iter_${iter}/ 2.3e-9 tor_8_iter_${iter}/*.smc.gz
+
+
+cd analysis_tor_8_iter_${iter}
+smc++ plot --csv plot_CR8_aut_est_iter_${iter}.png  model.final.json
+
+
+###now for all chromosomes
+
+cd /projects/phillipslab/ateterina/CR_popgen/data/reads/BAMS/EXONS_INTRONS/SMCPP2
+
+for chr in I II III IV V X;do
+	mkdir -p tor_8_iter_${iter}_CHR_${chr}
+
+	smc++ vcf2smc --cores 10 -m /projects/phillipslab/ateterina/CR_popgen/data/reads/BAMS/EXONS_INTRONS/SMCPP2/CR_MASK.bed.gz ${VCF}.gz tor_8_iter_${iter}_CHR_${chr}/$chr.smc.gz $chr Pop1:${IND}
+	mkdir -p analysis_tor_8_iter_${iter}_CHR_${chr}
+	smc++ estimate --cores 10 -o analysis_tor_8_iter_${iter}_CHR_${chr}/ 2.3e-9 tor_8_iter_${iter}_CHR_${chr}/*.smc.gz
+
+
+	cd analysis_tor_8_iter_${iter}_CHR_${chr}
+	smc++ plot --csv plot_CR8_aut_est_iter_${iter}_CHR_${chr}.png  model.final.json
+	cd ..
+
+done
