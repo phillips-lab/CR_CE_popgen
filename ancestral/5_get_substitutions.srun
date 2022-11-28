@@ -51,7 +51,147 @@ while read window; do
   sed -i "s/ /\t/g" TARGET.bed
   halLiftover ../c.remanei.cactus.5gen PX506 TARGET.bed Anc0 WINDOW.bed
   bedtools nuc -fi ../Anc0.fasta -bed WINDOW.bed> GC_content_WINDOW.bed
-  grep -v "#" GC_content_WINDOW.bed | awk '{ sum += $5 } END { if (NR > 0) print sum / NR }' >GC.txt
+  grep -v "#" GC_content_WINDOW.bed | awk '{ sum += $5*($2-$1); len += ($2-$1) }' >GC.txt
   paste -d'\t' TARGET.bed GC.txt >>ANCESTRAL_GC.txt
 
+done < CRPX506.windows.bed
+
+
+
+#### Exons and Introns
+###variants in exons and introns
+## overlap the tsv with exons and introns
+##write into 2 separate files
+exonbed="/projects/phillipslab/ateterina/CR_popgen/data/reads/BAMS/EXONS_INTRONS/Exons_ok.bed"
+intronbed="/projects/phillipslab/ateterina/CR_popgen/data/reads/BAMS/EXONS_INTRONS/Introns_ok.bed"
+
+cp $exonbed Exons_chrnames.bed
+cp $intronbed Introns_chrnames.bed
+chromosomes=(I II III IV V X)
+chrnames=(CM021144.1 CM021145.1 CM021146.1 CM021147.1 CM021148.1 CM021149.1)
+
+#rename chromosomes in the bed file
+for CHR in {0..5};do
+
+    OLDNAME=${chromosomes[$CHR]}
+    NEWNAME=${chrnames[$CHR]}
+
+    sed -i "s/^${OLDNAME}\t/${NEWNAME}\t/g" Exons_chrnames.bed
+    sed -i "s/^${OLDNAME}\t/${NEWNAME}\t/g" Introns_chrnames.bed
+
+done
+
+
+bedtools subtract -a Exons_chrnames.bed -b ../MASKS/PX506-genmap-50-4.2.bed >Exons_chrnames_non_rep.bed
+bedtools subtract -a Introns_chrnames.bed -b ../MASKS/PX506-genmap-50-4.2.bed >Introns_chrnames_non_rep.bed
+
+
+
+#ok. get the variants
+grep -v "refSeq" ../Anc0_to_Px506_snps2.tsv |awk '{print $1"\t"$2-1"\t"$2"\t"$3"\t"$4}' - > Anc0_to_Px506_snps2_tsv2bed.bed
+
+bedtools intersect -wao -a  Anc0_to_Px506_snps2_tsv2bed.bed -b  Exons_chrnames_non_rep.bed > Anc0_varinats_EXON.bed
+bedtools intersect -wao -a  Anc0_to_Px506_snps2_tsv2bed.bed -b  Introns_chrnames_non_rep.bed > Anc0_varinats_INTRON.bed
+
+
+
+cat Anc0_varinats_EXON.bed |grep -vP '\t-1\t' - | awk '{print $1"\t"int($2/100000)"\t"$4"\t"$5}' - | tr "atgc" "ATGC" |sort -k1,1 -k2,2n |uniq -c > CHR_POS_PX506_ANC0_EXON_100kb.txt
+sed -i -e 's/ *//' -e 's/ /\t/' CHR_POS_PX506_ANC0_EXON_100kb.txt
+
+
+cat Anc0_varinats_INTRON.bed| grep -vP '\t-1\t' - | awk '{print $1"\t"int($2/100000)"\t"$4"\t"$5}' - | tr "atgc" "ATGC" |sort -k1,1 -k2,2n |uniq -c > CHR_POS_PX506_ANC0_INTRON_100kb.txt
+sed -i -e 's/ *//' -e 's/ /\t/' CHR_POS_PX506_ANC0_INTRON_100kb.txt
+
+
+
+### get coverage for exons and introns
+
+bedtools intersect -a  ../Position_with_Anc_states_non_rep.bed -b  Exons_chrnames_non_rep.bed > COV_POS_EXON.bed
+bedtools coverage -b COV_POS_EXON.bed -a CRPX506.windows.bed >Ancestral_states_coverage_EXON_100kb.bed
+
+bedtools intersect -a  ../Position_with_Anc_states_non_rep.bed -b  Introns_chrnames_non_rep.bed > COV_POS_INTRON.bed
+bedtools coverage -b COV_POS_INTRON.bed -a CRPX506.windows.bed >Ancestral_states_coverage_INTRON_100kb.bed
+
+### get GC for introns and exons
+rm -f ANCESTRAL_GC_EXON.txt ANCESTRAL_GC_INTRON.txt
+
+while read window; do
+
+    echo $window > TARGET.bed
+    sed -i "s/ /\t/g" TARGET.bed
+    bedtools intersect -a  TARGET.bed -b  Exons_chrnames_non_rep.bed > TARGET_EXON.bed
+    bedtools intersect -a  TARGET.bed -b  Introns_chrnames_non_rep.bed > TARGET_INTRON.bed
+
+    halLiftover ../c.remanei.cactus.5gen PX506 TARGET_EXON.bed Anc0 WINDOW_EXON.bed
+    bedtools nuc -fi ../Anc0.fasta -bed WINDOW_EXON.bed> GC_content_WINDOW_EXON.bed
+
+    halLiftover ../c.remanei.cactus.5gen PX506 TARGET_INTRON.bed Anc0 WINDOW_INTRON.bed
+    bedtools nuc -fi ../Anc0.fasta -bed WINDOW_INTRON.bed> GC_content_WINDOW_INTRON.bed
+
+
+    grep -v "#" GC_content_WINDOW_EXON.bed | awk '{ sum += $5*($2-$1); len += ($2-$1) } END { if (NR > 0) print sum / len }' >GC_EXON.txt
+    paste -d'\t' TARGET.bed GC_EXON.txt >>ANCESTRAL_GC_EXON.txt
+
+    grep -v "#" GC_content_WINDOW_INTRON.bed | awk '{ sum += $5*($2-$1); len += ($2-$1) } END { if (NR > 0) print sum / len }' >GC_INTRON.txt
+    paste -d'\t' TARGET.bed GC_INTRON.txt >>ANCESTRAL_GC_INTRON.txt
+
+
+done < CRPX506.windows.bed
+
+
+
+
+####also get pi for those regions!
+
+pidir="/projects/phillipslab/ateterina/CR_popgen/data/reads/BAMS/EXONS_INTRONS"
+cp $pidir/CR_exons.sites.pi.bed CR_exons.sites.pi_chrnames.bed
+cp $pidir/CR_introns.sites.pi.bed CR_introns.sites.pi_chrnames.bed
+cp $pidir/Exons_fin.bed Exons_fin_chrnames.bed
+cp $pidir/Introns_fin.bed Introns_fin_chrnames.bed
+
+
+for CHR in {0..5};do
+
+    OLDNAME=${chromosomes[$CHR]}
+    NEWNAME=${chrnames[$CHR]}
+
+    sed -i "s/^${OLDNAME}\t/${NEWNAME}\t/g" CR_exons.sites.pi_chrnames.bed
+    sed -i "s/^${OLDNAME}\t/${NEWNAME}\t/g" CR_introns.sites.pi_chrnames.bed
+    sed -i "s/^${OLDNAME}\t/${NEWNAME}\t/g" Exons_fin_chrnames.bed
+    sed -i "s/^${OLDNAME}\t/${NEWNAME}\t/g" Introns_fin_chrnames.bed
+
+done
+
+
+
+
+
+#head -n4 CRPX506.windows.bed > TESTTEST.bed
+
+rm -f CR_Introns.COVERAGE_100Kb_ANC_ALL.bed CR_Exons.COVERAGE_100Kb_ANC_ALL.bed CR_exons_pi_100kb_FIN_ANC_ALL.bed CR_introns_pi_100kb_FIN_ANC_ALL.bed
+
+module load bedtools
+topfijUf5
+while read window; do
+    echo $window > TARGET.bed
+    sed -i "s/ /\t/g" TARGET.bed
+    bedtools intersect -a  TARGET.bed -b  Exons_chrnames_non_rep.bed | sort -n -k1,1 -k2,2n - > TARGET_EXON.bed
+    bedtools intersect -a  TARGET.bed -b  Introns_chrnames_non_rep.bed | sort -n -k1,1 -k2,2n - > TARGET_INTRON.bed
+
+
+    bedtools intersect -b Introns_fin_chrnames.bed -a TARGET_INTRON.bed | sort -n -k1,1 -k2,2n - > CR_Introns.COVERAGE_100Kb_ANC.bed
+    bedtools intersect -b Exons_fin_chrnames.bed -a TARGET_EXON.bed | sort -n -k1,1 -k2,2n - > CR_Exons.COVERAGE_100Kb_ANC.bed
+
+    bedtools coverage -b CR_Introns.COVERAGE_100Kb_ANC.bed -a TARGET.bed >> CR_Introns.COVERAGE_100Kb_ANC_ALL.bed
+    bedtools coverage -b CR_Exons.COVERAGE_100Kb_ANC.bed -a TARGET.bed >> CR_Exons.COVERAGE_100Kb_ANC_ALL.bed
+
+
+    bedtools intersect  -wb -b CR_exons.sites.pi_chrnames.bed -a TARGET_EXON.bed | sort -n -k1,1 -k2,2n - > CR_PI_EXON.bed
+    bedtools intersect -wb -b CR_introns.sites.pi_chrnames.bed -a TARGET_INTRON.bed | sort -n -k1,1 -k2,2n - > CR_PI_INTRON.bed
+
+    bedtools map -b CR_PI_EXON.bed -a TARGET.bed -c 7 -o sum >> CR_exons_pi_100kb_FIN_ANC_ALL.bed
+    bedtools map -b CR_PI_INTRON.bed -a TARGET.bed -c 7 -o sum >> CR_introns_pi_100kb_FIN_ANC_ALL.bed
+
+
+#done < TESTTEST.bed
 done < CRPX506.windows.bed

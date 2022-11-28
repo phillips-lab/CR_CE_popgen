@@ -295,7 +295,7 @@ ggplot(STATS2, aes(x = POS/10, y = TAMURA, ordered = FALSE))  +
 
 #  coord_cartesian(ylim=c(0,3)) +
 ggplot(STATS2, aes(x = POS/10, y = pi/TAMURA, ordered = FALSE))  +
-  labs(title ="B", x = "Genome position (Mb)", y = "Diversity(theta)/Divergence") +
+  labs(title ="B", x = "Genome position (Mb)", y = "Diversity/Divergence") +
   scale_y_continuous(labels = function(x) format(x, scientific = FALSE)) +
   scale_x_continuous(breaks = seq(0, 100, by = 5)) +
   theme_bw(base_size = 12) +
@@ -305,19 +305,19 @@ ggplot(STATS2, aes(x = POS/10, y = pi/TAMURA, ordered = FALSE))  +
   theme(strip.background = element_blank(),panel.grid.major = element_blank(), panel.grid.minor = element_blank(), strip.text = element_text(size = rel(1))) +
   facet_grid(.~ chrom, scale="free",space="free" ) +
   geom_vline(data = domainsCR,aes(xintercept = POS/10),colour = "#bfbfbf",size = 0.75,linetype = "dashed") +
-  geom_point(alpha=0.10,size=0.6, col="#73A8BD") +
-  geom_smooth(col="#73A8BD",alpha=1,size=1.1,se =FALSE,method = 'loess',span=0.4) + theme(plot.margin = unit(c(1, 3, 1.5, 3), "pt")) ->F4B
+  geom_point(alpha=0.10,size=0.6, col="#183843") +
+  geom_smooth(col="#183843",alpha=1,size=1.1,se =FALSE,method = 'loess',span=0.4) + theme(plot.margin = unit(c(1, 3, 1.5, 3), "pt")) ->F4B
 
 
 
 
-grid.arrange(F4A,F4B, nrow=2) ->F4
+#grid.arrange(F4A,F4B, nrow=2) ->F4
 
-setwd("/Users/anastasia/Documents/Phillips_lab/drafts/CR_popgen/Ancestral/dir_100kb/")
+#setwd("/Users/anastasia/Documents/Phillips_lab/drafts/CR_popgen/Ancestral/dir_100kb/")
 #ggsave(filename = "CR_CE_divergence_fig4.png",F4,width = 7.2,height = 5,dpi=300,scale=1)
-tiff(filename = "Fig3.tiff",width = 7.2,height = 5,res=300,units="in")
-plot(F4)
-dev.off()
+#tiff(filename = "Fig3.tiff",width = 7.2,height = 5,res=300,units="in")
+#plot(F4)
+#dev.off()
 
 STATS2$ratio<-STATS2$TAMURA/STATS2$pi
 STATS2$CHRTYPE<-factor(STATS2$CHRTYPE)
@@ -380,13 +380,13 @@ for (i in levels(as.factor(df3$group))){
 mutstat$adj<-p.adjust(mutstat$pval)
 
 mutstat
-#      group         D      stat   pval    adj
-#1 C→T|G→A 0.5542107  3.634444 0.0004 0.0024
-#2 A→G|T→C 0.3418894  2.249454 0.0272 0.0816
-#3 C→A|G→T 0.3099842 -2.040271 0.0437 0.0816
-#4 A→T|T→A 0.4218895 -2.772876 0.0069 0.0276
-#5 C→G|G→C 0.4361383 -2.865920 0.0044 0.0220
-#6 A→C|T→G 0.3286937 -2.162965 0.0319 0.0816
+#group         D      stat   pval    adj
+#1 C→T|G→A 0.5508074  3.612359 0.0005 0.0030
+#2 A→G|T→C 0.3517458  2.314029 0.0211 0.0633
+#3 C→A|G→T 0.3025061 -1.991209 0.0484 0.0722
+#4 A→T|T→A 0.4243130 -2.788705 0.0078 0.0312
+#5 C→G|G→C 0.4358583 -2.864092 0.0045 0.0225
+#6 A→C|T→G 0.3251058 -2.139442 0.0361 0.0722
 
 setDT(STATS2)[, frac := Fraction / sum(Fraction), by=c("CHR","POS")]
 
@@ -399,23 +399,23 @@ for (i in levels(as.factor(STATS2$group))){
 }
 
 #[1] "A→C|T→G"
-#[1] 0.2339641
-#[1] 0.2920816
+#[1] 0.2339485
+#[1] 0.2920816 ##!
 #[1] "A→G|T→C"
-#[1] -0.3846189 ##!
-#[1] -0.2968253
+#[1] -0.3846163
+#[1] -0.2968253 ##!
 #[1] "A→T|T→A"
-#[1] 0.1940253
+#[1] 0.1940151
 #[1] 0.09296976
 #[1] "C→A|G→T"
-#[1] 0.1278696
+#[1] 0.1278766
 #[1] 0.195708
 #[1] "C→G|G→C"
-#[1] 0.6152506 ###Wow!
+#[1] 0.6152807 ##!
 #[1] 0.4428357
 #[1] "C→T|G→A"
-#[1] -0.3011542
-#[1] -0.2919256
+#[1] -0.3011619
+#[1] -0.2919256 ##!
 
 dataSUB<-read.csv("CR_polim_counts.txt",header=F,sep="\t")
 
@@ -484,4 +484,426 @@ FIGS3ABC
 
 tiff(filename = "S3.tiff",width = 7.2,height = 8,res=300, units="in")
 plot(FIGS3ABC)
+dev.off()
+
+
+
+#### EXONS and INTRONS
+
+dataEX<-read.csv("CHR_POS_PX506_ANC0_EXON_100kb.txt",header=F,sep="\t")
+colnames(dataEX)<-c("Count","CHR","POS","PX506","Anc0")
+dataEX$CHR<-gsub("CM021144.1","I",dataEX$CHR)
+dataEX$CHR<-gsub("CM021145.1","II",dataEX$CHR)
+dataEX$CHR<-gsub("CM021146.1","III",dataEX$CHR)
+dataEX$CHR<-gsub("CM021147.1","IV",dataEX$CHR)
+dataEX$CHR<-gsub("CM021148.1","V",dataEX$CHR)
+dataEX$CHR<-gsub("CM021149.1","X",dataEX$CHR)
+
+
+sum(dataEX$Count)
+#[1] 578973 #number of polymorphic positions
+
+dataEX$replacement<-paste0(dataEX$Anc0,"->",dataEX$PX506)
+dataEX$group<-dataEX$replacement
+dataEX$group<-gsub("T->A","A->T",dataEX$group)
+dataEX$group<-gsub("T->G","A->C",dataEX$group)
+dataEX$group<-gsub("T->C","A->G",dataEX$group)
+dataEX$group<-gsub("G->T","C->A",dataEX$group)
+dataEX$group<-gsub("G->A","C->T",dataEX$group)
+dataEX$group<-gsub("G->C","C->G",dataEX$group)
+dataEX$group<-gsub("A->T","A→T|T→A",dataEX$group)
+dataEX$group<-gsub("A->C","A→C|T→G",dataEX$group)
+dataEX$group<-gsub("A->G","A→G|T→C",dataEX$group)
+dataEX$group<-gsub("C->A","C→A|G→T",dataEX$group)
+dataEX$group<-gsub("C->T","C→T|G→A",dataEX$group)
+dataEX$group<-gsub("C->G","C→G|G→C",dataEX$group)
+
+dataEX$TYPE<-dataEX$group
+dataEX$TYPE<-gsub("A→T\\|T→A|A→C\\|T→G|C→A\\|G→T|C→G\\|G→C|C→A\\|G→T","TV",perl=TRUE,dataEX$TYPE)
+dataEX$TYPE<-gsub("A→G\\|T→C|C→T\\|G→A","TS",perl=TRUE,dataEX$TYPE)
+
+bedEX<-read.csv("Ancestral_states_coverage_EXON_100kb.bed",sep="\t",header=F)
+
+#### some stats on coverage
+sum(bedEX$V5)/sum(bedEX$V6)*100
+#[1] 17.12479  #the number of position with ancestral states
+
+for(ch in levels(as.factor(bedEX$V1))){print(sum(bedEX[bedEX$V1==ch,]$V5)/sum(bedEX[bedEX$V1==ch,]$V6)*100);}
+
+
+
+
+bedEX$V1<-gsub("CM021144.1","I",bedEX$V1)
+bedEX$V1<-gsub("CM021145.1","II",bedEX$V1)
+bedEX$V1<-gsub("CM021146.1","III",bedEX$V1)
+bedEX$V1<-gsub("CM021147.1","IV",bedEX$V1)
+bedEX$V1<-gsub("CM021148.1","V",bedEX$V1)
+bedEX$V1<-gsub("CM021149.1","X",bedEX$V1)
+bedEX$POS<-as.integer(bedEX$V2/100000)
+BED<-bedEX[,c("V1","POS","V5")]
+colnames(BED)<-c("CHR","POS","COVERAGE")
+
+
+#percent of polymorphic positions from covered
+var<-c(); for(ch in levels(as.factor(dataEX$CHR))){
+  print(sum(dataEX[dataEX$CHR==ch,]$Count)/sum(bedEX[bedEX$V1==ch,]$V5)*100);
+  var<-c(var,(sum(dataEX[dataEX$CHR==ch,]$Count)/sum(bedEX[bedEX$V1==ch,]$V5)*100));
+}
+
+
+
+
+GCEX<-read.csv("ANCESTRAL_GC_EXON.txt",header=F,sep="\t")
+colnames(GCEX)<-c("CHR","POS","XXX","GC")
+GCEX<-GCEX[,-3]
+GCEX$POS<-GCEX$POS/100000
+
+
+GCEX$CHR<-gsub("CM021144.1","I",GCEX$CHR)
+GCEX$CHR<-gsub("CM021145.1","II",GCEX$CHR)
+GCEX$CHR<-gsub("CM021146.1","III",GCEX$CHR)
+GCEX$CHR<-gsub("CM021147.1","IV",GCEX$CHR)
+GCEX$CHR<-gsub("CM021148.1","V",GCEX$CHR)
+GCEX$CHR<-gsub("CM021149.1","X",GCEX$CHR)
+
+DATAEX<-merge(dataEX,BED,by=c("CHR","POS"),all.x=TRUE,ordered=FALSE)
+DATAEX$Fraction<-DATAEX$Count/DATAEX$COVERAGE*100
+DATAEX<-merge(DATAEX,GCEX,by=c("CHR","POS"),all.x=TRUE,ordered=FALSE)
+
+DATAEX$FractionGC<-4
+
+DATAEX[DATAEX$Anc0 %in% c("G", "C"), ]$FractionGC <-
+  (DATAEX[DATAEX$Anc0 %in% c("G", "C"), ]$Count / (DATAEX[DATAEX$Anc0 %in% c("G", "C"), ]$COVERAGE *
+                                                     DATAEX[DATAEX$Anc0 %in% c("G", "C"), ]$GC)) * 100
+DATAEX[DATAEX$Anc0 %in% c("A", "T"), ]$FractionGC <-
+  (DATAEX[DATAEX$Anc0 %in% c("A", "T"), ]$Count / (DATAEX[DATAEX$Anc0 %in% c("A", "T"), ]$COVERAGE *(1 - DATAEX[DATAEX$Anc0 %in% c("A", "T"), ]$GC))) * 100
+
+
+DATAEX %>%
+  group_by(group,CHR,POS)  %>%
+  summarise(Fraction = sum(FractionGC))-> A
+
+dfEX<-as.dataEX.frame(A)
+#add asterics to the groups that show significant changes between domains
+dfEX$group <-gsub("C→T.G→A","C→T|G→A*", perl=T, dfEX$group)
+dfEX$group <-gsub("A→T.T→A","A→T|T→A*", perl=T, dfEX$group)
+dfEX$group <-gsub("C→G.G→C","C→G|G→C*", perl=T,dfEX$group)
+dfEX$group <- factor(dfEX$group, levels = c("C→T|G→A*", "A→G|T→C","C→A|G→T", "A→T|T→A*", "C→G|G→C*", "A→C|T→G"))
+
+DATAEX %>%
+  group_by(CHR,POS,TYPE,GC,COVERAGE)  %>%
+  summarise(count = sum(Count))-> B
+
+dfEX2<-as.data.frame(B)
+
+
+
+TMP1<-dfEX2[dfEX2$TYPE=="TS",]
+TMP2<-dfEX2[dfEX2$TYPE=="TV",]
+TMP1<-TMP1[,-3]
+TMP2<-TMP2[,-3]
+
+
+colnames(TMP1)[5]<-"TS"
+colnames(TMP2)[5]<-"TV"
+
+sum(TMP1[TMP1$COVERAGE>5000,]$TS)/sum(TMP2[TMP2$COVERAGE>5000,]$TV)
+#[1] 1.581049
+
+
+DISTEX<-merge(TMP1,TMP2,by=c("CHR","POS","GC","COVERAGE"),all.x=TRUE,ordered=FALSE)
+colnames(DISTEX)[4]<-"N"
+RESEX<-c();for(i in 1:nrow(DISTEX)){RESEX<-rbind(RESEX,data.frame(CHR=DISTEX$CHR[i],POS=DISTEX$POS[i],TAMURA=TAMURA92(DISTEX$TS[i],DISTEX$TV[i],DISTEX$N[i],DISTEX$GC[i])));}
+
+
+
+STATSEX<-merge(RESEX,DATAEX,by=c("CHR","POS"),all.x=TRUE,ordered=FALSE)
+
+#####
+STATSEX2<-STATSEX[STATSEX$COVERAGE>5000,]  #########!
+
+STATSEX2$CHRTYPE<-"Arm"
+for (chr in 1:length(levels(as.factor(as.character(STATSEX2$CHR))))){
+  STATSEX2[STATSEX2$CHR==levels(as.factor(as.character(STATSEX2$CHR)))[chr] & STATSEX2$POS>domainsCR$classifiedWinEnd[chr*2-1]/100000 & STATSEX2$POS<domainsCR$classifiedWinEnd[chr*2]/100000,]$CHRTYPE<-"Center"
+
+}
+
+STATSEX2$KIND<-"Exon"
+
+
+dataIN<-read.csv("CHR_POS_PX506_ANC0_INTRON_100kb.txt",header=F,sep="\t")
+colnames(dataIN)<-c("Count","CHR","POS","PX506","Anc0")
+dataIN$CHR<-gsub("CM021144.1","I",dataIN$CHR)
+dataIN$CHR<-gsub("CM021145.1","II",dataIN$CHR)
+dataIN$CHR<-gsub("CM021146.1","III",dataIN$CHR)
+dataIN$CHR<-gsub("CM021147.1","IV",dataIN$CHR)
+dataIN$CHR<-gsub("CM021148.1","V",dataIN$CHR)
+dataIN$CHR<-gsub("CM021149.1","X",dataIN$CHR)
+
+
+sum(dataIN$Count)
+#[1] 1056499 #number of polymorphic positions
+
+dataIN$replacement<-paste0(dataIN$Anc0,"->",dataIN$PX506)
+dataIN$group<-dataIN$replacement
+dataIN$group<-gsub("T->A","A->T",dataIN$group)
+dataIN$group<-gsub("T->G","A->C",dataIN$group)
+dataIN$group<-gsub("T->C","A->G",dataIN$group)
+dataIN$group<-gsub("G->T","C->A",dataIN$group)
+dataIN$group<-gsub("G->A","C->T",dataIN$group)
+dataIN$group<-gsub("G->C","C->G",dataIN$group)
+dataIN$group<-gsub("A->T","A→T|T→A",dataIN$group)
+dataIN$group<-gsub("A->C","A→C|T→G",dataIN$group)
+dataIN$group<-gsub("A->G","A→G|T→C",dataIN$group)
+dataIN$group<-gsub("C->A","C→A|G→T",dataIN$group)
+dataIN$group<-gsub("C->T","C→T|G→A",dataIN$group)
+dataIN$group<-gsub("C->G","C→G|G→C",dataIN$group)
+
+dataIN$TYPE<-dataIN$group
+dataIN$TYPE<-gsub("A→T\\|T→A|A→C\\|T→G|C→A\\|G→T|C→G\\|G→C|C→A\\|G→T","TV",perl=TRUE,dataIN$TYPE)
+dataIN$TYPE<-gsub("A→G\\|T→C|C→T\\|G→A","TS",perl=TRUE,dataIN$TYPE)
+
+bedIN<-read.csv("Ancestral_states_coverage_INTRON_100kb.bed",sep="\t",header=F)
+
+#### some stats on coverage
+sum(bedIN$V5)/sum(bedIN$V6)*100
+#[1] 11.90755  #the number of position with ancestral states
+
+for(ch in levels(as.factor(bedIN$V1))){print(sum(bedIN[bedIN$V1==ch,]$V5)/sum(bedIN[bedIN$V1==ch,]$V6)*100);}
+
+
+
+bedIN$V1<-gsub("CM021144.1","I",bedIN$V1)
+bedIN$V1<-gsub("CM021145.1","II",bedIN$V1)
+bedIN$V1<-gsub("CM021146.1","III",bedIN$V1)
+bedIN$V1<-gsub("CM021147.1","IV",bedIN$V1)
+bedIN$V1<-gsub("CM021148.1","V",bedIN$V1)
+bedIN$V1<-gsub("CM021149.1","X",bedIN$V1)
+bedIN$POS<-as.integer(bedIN$V2/100000)
+BED<-bedIN[,c("V1","POS","V5")]
+colnames(BED)<-c("CHR","POS","COVERAGE")
+
+
+#percent of polymorphic positions from covered
+var<-c(); for(ch in levels(as.factor(dataIN$CHR))){
+  print(sum(dataIN[dataIN$CHR==ch,]$Count)/sum(bedIN[bedIN$V1==ch,]$V5)*100);
+  var<-c(var,(sum(dataIN[dataIN$CHR==ch,]$Count)/sum(bedIN[bedIN$V1==ch,]$V5)*100));
+}
+
+
+GCIN<-read.csv("ANCESTRAL_GC_INTRON.txt",header=F,sep="\t")
+colnames(GCIN)<-c("CHR","POS","XXX","GC")
+GCIN<-GCIN[,-3]
+GCIN$POS<-GCIN$POS/100000
+
+
+GCIN$CHR<-gsub("CM021144.1","I",GCIN$CHR)
+GCIN$CHR<-gsub("CM021145.1","II",GCIN$CHR)
+GCIN$CHR<-gsub("CM021146.1","III",GCIN$CHR)
+GCIN$CHR<-gsub("CM021147.1","IV",GCIN$CHR)
+GCIN$CHR<-gsub("CM021148.1","V",GCIN$CHR)
+GCIN$CHR<-gsub("CM021149.1","X",GCIN$CHR)
+
+DATAIN<-merge(dataIN,BED,by=c("CHR","POS"),all.x=TRUE,ordered=FALSE)
+DATAIN$Fraction<-DATAIN$Count/DATAIN$COVERAGE*100
+DATAIN<-merge(DATAIN,GCIN,by=c("CHR","POS"),all.x=TRUE,ordered=FALSE)
+
+DATAIN$FractionGC<-4
+
+DATAIN[DATAIN$Anc0 %in% c("G", "C"), ]$FractionGC <-
+  (DATAIN[DATAIN$Anc0 %in% c("G", "C"), ]$Count / (DATAIN[DATAIN$Anc0 %in% c("G", "C"), ]$COVERAGE *
+                                                     DATAIN[DATAIN$Anc0 %in% c("G", "C"), ]$GC)) * 100
+DATAIN[DATAIN$Anc0 %in% c("A", "T"), ]$FractionGC <-
+  (DATAIN[DATAIN$Anc0 %in% c("A", "T"), ]$Count / (DATAIN[DATAIN$Anc0 %in% c("A", "T"), ]$COVERAGE *(1 - DATAIN[DATAIN$Anc0 %in% c("A", "T"), ]$GC))) * 100
+
+
+DATAIN %>%
+  group_by(group,CHR,POS)  %>%
+  summarise(Fraction = sum(FractionGC))-> A
+
+dfIN<-as.dataIN.frame(A)
+#add asterics to the groups that show significant changes between domains
+dfIN$group <-gsub("C→T.G→A","C→T|G→A*", perl=T, dfIN$group)
+dfIN$group <-gsub("A→T.T→A","A→T|T→A*", perl=T, dfIN$group)
+dfIN$group <-gsub("C→G.G→C","C→G|G→C*", perl=T,dfIN$group)
+dfIN$group <- factor(dfIN$group, levels = c("C→T|G→A*", "A→G|T→C","C→A|G→T", "A→T|T→A*", "C→G|G→C*", "A→C|T→G"))
+
+DATAIN %>%
+  group_by(CHR,POS,TYPE,GC,COVERAGE)  %>%
+  summarise(count = sum(Count))-> B
+
+dfIN2<-as.data.frame(B)
+
+
+
+TMP1<-dfIN2[dfIN2$TYPE=="TS",]
+TMP2<-dfIN2[dfIN2$TYPE=="TV",]
+TMP1<-TMP1[,-3]
+TMP2<-TMP2[,-3]
+
+
+colnames(TMP1)[5]<-"TS"
+colnames(TMP2)[5]<-"TV"
+
+sum(TMP1[TMP1$COVERAGE>5000,]$TS)/sum(TMP2[TMP2$COVERAGE>5000,]$TV)
+#[1] 1.044264
+
+
+DISTIN<-merge(TMP1,TMP2,by=c("CHR","POS","GC","COVERAGE"),all.x=TRUE,ordered=FALSE)
+colnames(DISTIN)[4]<-"N"
+RESIN<-c();for(i in 1:nrow(DISTIN)){RESIN<-rbind(RESIN,data.frame(CHR=DISTIN$CHR[i],POS=DISTIN$POS[i],TAMURA=TAMURA92(DISTIN$TS[i],DISTIN$TV[i],DISTIN$N[i],DISTIN$GC[i])));}
+
+
+
+STATSIN<-merge(RESIN,DATAIN,by=c("CHR","POS"),all.x=TRUE,ordered=FALSE)
+
+#####
+STATSIN2<-STATSIN[STATSIN$COVERAGE>5000,]  #########!
+
+STATSIN2$CHRTYPE<-"Arm"
+for (chr in 1:length(levels(as.factor(as.character(STATSIN2$CHR))))){
+  STATSIN2[STATSIN2$CHR==levels(as.factor(as.character(STATSIN2$CHR)))[chr] & STATSIN2$POS>domainsCR$classifiedWinEnd[chr*2-1]/100000 & STATSIN2$POS<domainsCR$classifiedWinEnd[chr*2]/100000,]$CHRTYPE<-"Center"
+
+}
+
+STATSIN2$KIND<-"Intron"
+
+EXONINTRON<-rbind(STATSEX2,STATSIN2)
+colors <- c("#E6B243","#808080")
+EXONINTRON$chrom<-EXONINTRON$CHR
+
+ggplot(EXONINTRON, aes(x = POS/10, y = TAMURA, color=KIND,ordered = FALSE))  +
+  labs(title ="C", x = "Genome position (Mb)", y = "Divergence") +
+  scale_y_continuous(labels = function(x) format(x, scientific = FALSE)) +
+  scale_x_continuous(breaks = seq(0, 100, by = 5)) +
+  theme_bw(base_size = 12) +
+  theme(axis.text.x = element_text(angle=0,vjust=0.5, hjust = 0.5), plot.title = element_text(hjust = 0, face = "bold"),strip.background = element_blank(),panel.grid.major = element_blank(), panel.grid.minor = element_blank(), strip.text = element_text(size = rel(1))) +
+  theme(legend.position = c(0.89,1.4)) + theme(legend.key =element_blank(),legend.background=element_blank()) +
+  theme(strip.text.y = element_text(face = "italic"))+
+  theme(strip.background = element_blank(),panel.grid.major = element_blank(), panel.grid.minor = element_blank(), strip.text = element_text(size = rel(1))) +
+  facet_grid(.~ chrom, scale="free",space="free" ) +
+  geom_vline(data = domainsCR,aes(xintercept = POS/10),colour = "#bfbfbf",size = 0.75,linetype = "dashed") +
+  geom_point(alpha=0.1,size=0.6) + guides(colour = guide_legend(nrow = 1)) + theme(panel.background = element_blank()) +
+  geom_smooth(alpha=1,size=1.1,se =FALSE,method = 'loess',span=0.4) + theme(plot.margin = unit(c(1, 3, 1.5, 3), "pt")) + scale_color_manual(values=colors, name="")  ->F4C
+
+#grid.arrange(F4A,F4B,F4C, nrow=3) ->F4
+
+#setwd("/Users/anastasia/Documents/Phillips_lab/drafts/CR_popgen/Ancestral/dir_100kb/")
+#ggsave(filename = "CR_CE_divergence_fig4.png",F4,width = 7.2,height = 5,dpi=300,scale=1)
+#tiff(filename = "Fig3.tiff",width = 7.2,height = 7.2,res=300,units="in")
+#plot(F4)
+#dev.off()
+
+
+
+cohensD(TAMURA ~ CHRTYPE, data=EXONINTRON[EXONINTRON$KIND=="Exon",], method="corrected")
+#[1] 1.126752
+EXONINTRON$CHRTYPE<-as.factor(EXONINTRON$CHRTYPE)
+independence_test(TAMURA ~ CHRTYPE, data=EXONINTRON[EXONINTRON$KIND=="Exon",], alternative="two.sided",distribution=approximate(nresample=10000))
+
+#Approximative General Independence Test
+#
+#data:  TAMURA by CHRTYPE (Arm, Center)
+#Z = 54.404, p-value < 1e-04
+#alternative hypothesis: two.sided
+
+
+
+cohensD(TAMURA ~ CHRTYPE, data=EXONINTRON[EXONINTRON$KIND=="Intron",], method="corrected")
+#[1] 1.630789
+independence_test(TAMURA ~ CHRTYPE, data=EXONINTRON[EXONINTRON$KIND=="Intron",], alternative="two.sided",distribution=approximate(nresample=10000))
+
+#Approximative General Independence Test
+#
+#data:  TAMURA by CHRTYPE (Arm, Center)
+#Z = 69.255, p-value < 1e-04
+#alternative hypothesis: two.sided
+
+EXONINTRON$KIND<-as.factor(EXONINTRON$KIND)
+cohensD(TAMURA ~ KIND, data=EXONINTRON[EXONINTRON$CHRTYPE=="Center",], method="corrected")
+#[1] 2.718555
+independence_test(TAMURA ~ KIND, data=EXONINTRON[EXONINTRON$CHRTYPE=="Center",], alternative="two.sided",distribution=approximate(nresample=10000))
+
+#Approximative General Independence Test
+#
+#data:  TAMURA by KIND (Exon, Intron)
+#Z = -80.239, p-value < 1e-04
+#alternative hypothesis: two.sided
+
+cohensD(TAMURA ~ KIND, data=EXONINTRON[EXONINTRON$CHRTYPE=="Arm",], method="corrected")
+#[1] 2.628378
+independence_test(TAMURA ~ KIND, data=EXONINTRON[EXONINTRON$CHRTYPE=="Arm",], alternative="two.sided",distribution=approximate(nresample=10000))
+
+#Approximative General Independence Test
+#
+#data:  TAMURA by KIND (Exon, Intron)
+#Z = -97.847, p-value < 1e-04
+#alternative hypothesis: two.sided
+
+
+
+##########add diversity in exons and introns
+
+
+PIEX<-read.csv("CR_exons_pi_100kb_FIN_ANC_ALL.bed",header=F,sep="\t")
+PIIN<-read.csv("CR_introns_pi_100kb_FIN_ANC_ALL.bed",header=F,sep="\t")
+
+PIEXC<-read.csv("CR_Exons.COVERAGE_100Kb_ANC_ALL.bed",header=F,sep="\t")
+PIINC<-read.csv("CR_Introns.COVERAGE_100Kb_ANC_ALL.bed",header=F,sep="\t")
+
+
+
+PIEX<-merge(PIEX,PIEXC,by=c("V1","V2"), all.x=TRUE, sort = FALSE )
+PIIN<-merge(PIIN,PIINC,by=c("V1","V2"), all.x=TRUE, sort = FALSE )
+
+PIEX$KIND<-"Exon"
+PIIN$KIND<-"Intron"
+
+PIEXIN<- rbind(PIEX,PIIN)
+PIEXIN<- PIEXIN[,c(1,2,3,4,7,9,10)]
+colnames(PIEXIN) <- c("CHR","POS","POS2","PISUM","COVERED","FRAC_COVERED","KIND")
+
+summary(PIEXIN$PISUM)
+
+PIEXIN$PI<-PIEXIN$PISUM/PIEXIN$COVERED
+
+PIEXIN$CHR<-gsub("CM021144.1","I",PIEXIN$CHR)
+PIEXIN$CHR<-gsub("CM021145.1","II",PIEXIN$CHR)
+PIEXIN$CHR<-gsub("CM021146.1","III",PIEXIN$CHR)
+PIEXIN$CHR<-gsub("CM021147.1","IV",PIEXIN$CHR)
+PIEXIN$CHR<-gsub("CM021148.1","V",PIEXIN$CHR)
+PIEXIN$CHR<-gsub("CM021149.1","X",PIEXIN$CHR)
+PIEXIN$POS<-as.integer(PIEXIN$POS/100000)
+PIEXIN$chrom<-PIEXIN$CHR
+
+PIEXINDIV<-merge(PIEXIN,EXONINTRON,by=c("CHR","POS","KIND","chrom"),all.x=TRUE,sort=FALSE)
+PIEXINDIV2<-PIEXINDIV[PIEXINDIV$COVERED>5000,]  #########!
+
+
+hist(PIEXINDIV2$PI/PIEXINDIV2$TAMURA)
+
+PIEXINDIV2$PI<-as.numeric(as.character(PIEXINDIV2$PI))
+PIEXINDIV2$TAMURA <-as.numeric(as.character(PIEXINDIV2$TAMURA))
+
+ggplot(PIEXINDIV2, aes(x = POS/10, y = PI/TAMURA, color=KIND,ordered = FALSE))  +
+  labs(title ="D", x = "Genome position (Mb)", y = "Diversity/Divergence") +
+  scale_y_continuous(labels = function(x) format(x, scientific = FALSE)) +
+  scale_x_continuous(breaks = seq(0, 100, by = 5)) +
+  theme_bw(base_size = 12) +
+  theme(axis.text.x = element_text(angle=0,vjust=0.5, hjust = 0.5), plot.title = element_text(hjust = 0, face = "bold"),strip.background = element_blank(),panel.grid.major = element_blank(), panel.grid.minor = element_blank(), strip.text = element_text(size = rel(1))) +
+  theme(legend.position = c(0.89,1.4)) + theme(legend.key =element_blank(),legend.background=element_blank()) +
+  theme(strip.text.y = element_text(face = "italic"))+
+  theme(strip.background = element_blank(),panel.grid.major = element_blank(), panel.grid.minor = element_blank(), strip.text = element_text(size = rel(1))) +
+  facet_grid(.~ chrom, scale="free",space="free" ) +
+  geom_vline(data = domainsCR,aes(xintercept = POS/10),colour = "#bfbfbf",size = 0.75,linetype = "dashed") +
+  geom_point(alpha=0.1,size=0.6) + guides(colour = guide_legend(nrow = 1)) + theme(panel.background = element_blank()) +
+  geom_smooth(alpha=1,size=1.1,se =FALSE,method = 'loess',span=0.4) + theme(plot.margin = unit(c(1, 3, 1.5, 3), "pt")) + scale_color_manual(values=colors, name="")  ->F4D
+
+
+grid.arrange(F4A,F4B,F4C,F4D, nrow=4) ->F4
+
+setwd("/Users/anastasia/Documents/Phillips_lab/drafts/CR_popgen/Ancestral/dir_100kb/")
+#ggsave(filename = "CR_CE_divergence_fig4.png",F4,width = 7.2,height = 5,dpi=300,scale=1)
+tiff(filename = "Fig3.tiff",width = 7.2,height = 9.2,res=300,units="in")
+plot(F4)
 dev.off()
