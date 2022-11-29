@@ -907,3 +907,9 @@ setwd("/Users/anastasia/Documents/Phillips_lab/drafts/CR_popgen/Ancestral/dir_10
 tiff(filename = "Fig3.tiff",width = 7.2,height = 9.2,res=300,units="in")
 plot(F4)
 dev.off()
+
+mean(EXONINTRON[EXONINTRON$CHRTYPE=="Arm" & EXONINTRON$KIND=="Exon", ]$TAMURA)/mean(EXONINTRON[EXONINTRON$CHRTYPE=="Center" & EXONINTRON$KIND=="Exon", ]$TAMURA)
+#[1] 1.702559
+
+mean(EXONINTRON[EXONINTRON$CHRTYPE=="Arm" & EXONINTRON$KIND=="Intron", ]$TAMURA)/mean(EXONINTRON[EXONINTRON$CHRTYPE=="Center" & EXONINTRON$KIND=="Intron", ]$TAMURA)
+#[1] 1.633146
