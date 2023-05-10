@@ -122,3 +122,7 @@ cat ${VCF/raw/filt_snps_5-100_0.5} >> ${VCF/raw/filt_snps_5-100_0.5_fin}
 #(329481 + 380477 + 378781 + 330639)/(107642 + 173132 + 128004 + 64498 + 64505 + 128759 + 172433 + 107399) = 1.49981
 
 #which gives  1.49981:1 transition to transversion ratio
+
+
+#awk '{print $1"_"int($2/1000000)"\t"$4"\t"$5}' /projects/phillipslab/ateterina/CR_popgen/data/reads/BAMS/CR_WILD_population14_filt_snps_5-100_0.5_fin.vcf |grep -v "#" - | awk 'BEGIN{OFS="\t";}{id=$1; if($2$3~/^(AG|TC|GA|CT)$/){ts_count[id]++}else if($2$3~/^(AC|CA|TG|GT|AT|TA|GC|CG)$/){tv_count[id]++}}END{for(id in ts_count){ts_tv_ratio=ts_count[id]/tv_count[id]; print id, ts_count[id], tv_count[id], ts_tv_ratio}}' - |awk '{ total += $4; square_total += ($4*$4); count++ } END { average = total/count; stdev = sqrt(square_total/count - (average*average)); print "Standard deviation of the fourth column:", stdev }' -
+#Standard deviation of the fourth column: 0.0990802

@@ -117,6 +117,11 @@ bcice
 
 
 
+#shades on the recent and ancient demographic times (>4Ne)
+shading <-data.frame(Species=c("C. elegans", "C. elegans", "C. remanei", "C. remanei"),
+                     xmin=c(0, 34000*4, 0, 1400000*4), xmax=c(100,Inf,100,Inf),ymin=c(0,0,0,0), ymax=c(Inf, Inf, Inf, Inf))
+
+
 FIG6B<-ggplot(SMC, aes(x = x, y = y, color= Species, fill=Species, ordered = FALSE))  +
   labs(title ="B", x = "Generations", y = "Effective population size") +
   scale_x_log10(breaks = trans_breaks("log10", function(x) 10^x),labels = trans_format(trans="log10", math_format(10^.x))) +
@@ -127,15 +132,11 @@ FIG6B<-ggplot(SMC, aes(x = x, y = y, color= Species, fill=Species, ordered = FAL
   theme(strip.text.y = element_text(face = "italic"))+
   theme(strip.background = element_blank(),panel.grid.major = element_blank(), panel.grid.minor = element_blank(), strip.text = element_text(size = rel(1))) +
   facet_grid(Species~ .) +
-  geom_rect(aes(xmin=0, xmax=1000, ymin=0, ymax=Inf), col="#e3e3e3",fill="#e3e3e3") +
+  geom_rect(data=shading, aes(xmin=shading$xmin, xmax=shading$xmax, ymin=shading$ymin, ymax=shading$ymax),inherit.aes = FALSE, col="#e3e3e3",fill="#e3e3e3") +
   geom_line(aes(group=sample),size=0.5, alpha=0.4) +
   theme(plot.margin = unit(c(1, 3, 1.5, 3), "pt")) +
   scale_color_manual(values = c("#196770","#196770"),name="") + scale_fill_manual(values = c("#225D5B","#225D5B"),name="")
 
-#ggsave(filename = "CR_CE_SMCPP.png",FIG6,width = 7.2,height = 4.2,dpi=300,scale=1)
-#tiff(filename = "Fig5.tiff",width = 7.2,height = 4.2,res=300,units="in")
-plot(FIG6B)
-#dev.off()
 
 
 ###GONE results

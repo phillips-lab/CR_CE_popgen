@@ -1,7 +1,7 @@
 ######################################################################################
 ################ Distribution of dominance and selection coefficients ################
 ######################################################################################
-############### Fig S18,
+############### Fig S14,
 
 
 setwd("/Users/anastasia/Documents/Phillips_lab/drafts/CR_popgen/CR_CE_pi_draft/SLiM/100kb_data/BEN/")
@@ -48,18 +48,6 @@ COMBO$Type <- factor(COMBO$Type, levels = c("weakly\ndeleterious","moderately\nd
 colorsMUT<-c("#183843", "#196770", "#73A8BD", "#C0BDBC", "#f2c76f", "#916b20")
 
 
-# domselplot<-ggplot(COMBO,
-#                    aes(x = Selection, y=Dominance,order=FALSE)) +
-#   theme_bw(base_size = 12) +
-#   theme(legend.position = "right") +
-#   theme(axis.text.x = element_text(angle=0,vjust=0.5, hjust = 0.5), plot.title = element_text(hjust = 0, face = "bold"),strip.background = element_blank(),panel.grid.major = element_blank(), panel.grid.minor = element_blank(), strip.text = element_text(size = rel(1))) +
-#   labs(x = "Ns", y = "Dominance") +
-#   facet_grid(Type~.)  + geom_bin2d(bins=100) +
-#   scale_fill_gradient2(low = "black",mid="#C0BDBC",high = "#196770")
-#
-# ggsave("SLiM_dom_sel_distributions.png",domselplot, width =8,height = 6, scale=1)
-# ggsave("SLiM_dom_sel_distributions.tiff",domselplot, width =8,height = 6, scale=1)
-
 
 COMBO$DomClass<-"OOO"
 
@@ -103,7 +91,7 @@ domselhist<- ggplot(pld, aes(x = SelClass,y=perc,fill=DomClass,ordered = FALSE))
 #ggsave("SLiM_dom_sel_distributions_hist.png",domselhist, width =8,height = 6, scale=1)
 
 
-tiff(filename = "S20.tiff", width =8,height = 6,res=300,units="in")
+tiff(filename = "S14.tiff", width =8,height = 6,res=300,units="in")
 plot(domselhist)
 dev.off()
 

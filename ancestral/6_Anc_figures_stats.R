@@ -341,6 +341,54 @@ cor(STATS2[STATS2$CHRTYPE=="Center",]$TAMURA, STATS2[STATS2$CHRTYPE=="Center",]$
 cor(STATS2[STATS2$CHRTYPE=="Arm",]$TAMURA, STATS2[STATS2$CHRTYPE=="Arm",]$pi)
 #[1] 0.3818657
 
+
+
+
+#get TS_TV ratio
+library(dplyr)
+
+summarized_dataTSTV <- STATS2 %>%
+  group_by(CHR, POS, TYPE) %>%
+  summarize(total_count = sum(Count))
+
+ratio_data <- summarized_dataTSTV %>%
+  filter(TYPE == "TS" | TYPE == "TV") %>%
+  group_by(CHR, POS) %>%
+  summarize(ts_total = sum(total_count[TYPE == "TS"]),
+            tv_total = sum(total_count[TYPE == "TV"]),
+            ts_tv_ratio = ts_total / tv_total)
+
+sd(ratio_data$ts_tv_ratio)
+#[1] 0.09622801
+
+###Arm/center
+summarized_dataCHRTYPE <- STATS2 %>%
+  group_by(CHRTYPE) %>%
+  summarize(total_count = sum(Count))
+
+
+summarized_dataCHRTYPE
+# A tibble: 2 × 2
+#CHRTYPE total_count
+#<fct>         <int>
+#  1 Arm         1407514
+#2 Center      1250136
+#1407514/(1407514+1250136)*100
+#[1] 52.96085
+
+
+#TS/TV ratios for the C. remanei population from Toronto, 1Mb windows
+tstv<-read.csv("/Users/anastasia/Documents/Phillips_lab/drafts/CR_popgen/github/scripts/ts-tv_crpop.txt",header=F)
+
+kruskal.test(list(ratio_data$ts_tv_ratio, tstv$V1))
+#Kruskal-Wallis rank sum test
+#
+#data:  list(ratio_data$ts_tv_ratio, tstv$V1)
+#Kruskal-Wallis chi-squared = 306.94, df = 1, p-value < 2.2e-16
+
+
+
+
 #####stats
 
 #arm/center
